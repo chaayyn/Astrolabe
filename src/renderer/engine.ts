@@ -31,6 +31,8 @@ export const ENGINE_PARAMS: readonly ParamDef[] = [
   { id: "display.labels", label: "Noms affichés sur le graphe", group: "Affichage", type: "slider", min: 0, max: 12, step: 1, default: 5 },
   { id: "display.fps", label: "Afficher les FPS", group: "Affichage", type: "toggle", default: false },
   { id: "display.keybar", label: "Afficher la bande de raccourcis", group: "Affichage", type: "toggle", default: true },
+  // Géré par le panneau Paramètres (fond translucide de l'interface), déclaré ici avec les autres.
+  { id: "display.blur", label: "Flou de l'interface", group: "Affichage", type: "slider", min: 0, max: 30, step: 1, unit: " px", default: 18 },
 ];
 
 export class Engine {

@@ -140,7 +140,20 @@ export class Settings {
     }
     keybar.hidden = !showKeybar;
     document.body.classList.toggle("reduce-motion", this.values["motion.reduce"] === true);
+    this.applyBlur();
     this.applyColors();
+  }
+
+  /**
+   * Verre dépoli de l'interface : rayon du flou, et transparence du fond qui va avec. Sans flou,
+   * le fond devient presque opaque (0,85) pour rester lisible ; à 18 px et plus, il est à 0,5.
+   */
+  private applyBlur(): void {
+    const v = this.values["display.blur"];
+    const blur = typeof v === "number" ? Math.max(0, v) : 18;
+    const root = document.documentElement.style;
+    root.setProperty("--ui-blur", `${blur}px`);
+    root.setProperty("--ui-glass-alpha", (0.85 - (Math.min(blur, 18) / 18) * 0.35).toFixed(3));
   }
 
   /** Écrit les couleurs remplacées dans leur feuille de style, puis le graphe relit ses couleurs. */
