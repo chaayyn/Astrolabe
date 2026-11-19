@@ -12,6 +12,7 @@ Fichiers d'Astrolabe adaptés de ce projet :
 
 - `src/renderer/scenes/galaxie/sky.ts` — adapté de `src/sky.js` (formules de la nébuleuse procédurale, bruit, grille d'étoiles, calcul des météores, rendu plein écran du ciel).
 - `src/renderer/scenes/galaxie/accretion.ts` — adapté de `src/accretion.js` (rayons lumineux courbés par le trou noir, disque d'accrétion procédural, halo en passes de flou, composition et mappage des tons), avec la logique de lentille de `src/lensing.js` (zone limitée autour du trou noir, rayon de l'ombre).
+- `src/renderer/scenes/galaxie/lens.ts` — adapté de `src/lensing.js` (modèle de lentille ponctuelle : rayon d'Einstein, image principale et image secondaire, étirement en arc).
 
 Autres inspirations, sans code repris : le plugin Obsidian « Rho Network » (ambiance générale : trou noir au centre, dossiers en orbites, notes en étoiles), pour la seule direction visuelle.
 
