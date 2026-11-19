@@ -1,0 +1,9 @@
+{
+  "id": "galaxie",
+  "name": "Galaxie",
+  "version": "1.0.0",
+  "author": "Astrolabe",
+  "description": "Thème par défaut : noir, blanc chaud, un seul accent doré.",
+  "style": "theme.css",
+  "scene": "galaxie"
+}

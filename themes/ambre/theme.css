@@ -1,0 +1,68 @@
+/*
+ * Thème "Ambre" : exemple de thème, même structure épurée, palette monochrome ambre sur noir.
+ * Il reprend toutes les variables de "galaxie" ; seules les couleurs changent.
+ */
+:root {
+  /* Couleurs de l'interface */
+  --sc-bg: #000000; /* fond : noir pur */
+  --sc-surface: #000000;
+  --sc-text: #ffd59a;
+  --sc-text-muted: #d9a868; /* gris 1 (ambre) */
+  --sc-text-dim: #b0864f; /* gris 2 (ambre), ≈ 6:1 sur noir */
+  --sc-text-faint: #957243; /* gris 3 (ambre), ≈ 4,7:1 sur noir */
+  --sc-hairline: rgba(255, 196, 120, 0.16);
+  --sc-border: rgba(255, 196, 120, 0.42);
+  --sc-border-strong: #ffd59a;
+  --sc-hover: rgba(255, 196, 120, 0.08);
+  --sc-focus: #ffd59a;
+  --sc-accent: #ffaa33;
+  --sc-accent-soft: rgba(255, 170, 51, 0.35);
+  --sc-backdrop: rgba(0, 0, 0, 0.66);
+  --sc-shadow: 0 0 4px #000000, 0 0 1px #000000;
+
+  /* Couleurs du graphe (lues par le canvas) */
+  --sc-sky: #050200; /* fond du ciel étoilé */
+  --sc-star: #ffd08a; /* étoiles des notes, halos */
+  --sc-star-accent: #ff9f1c; /* étoiles les plus connectées, survol, trou noir */
+  --sc-link: #ffbf66; /* lignes entre les notes (leur transparence est gérée par l'app) */
+  --sc-orbit: #ffbf66; /* anneaux des dossiers */
+  --sc-label: #ffd59a; /* noms des notes sur le graphe */
+
+  /* Polices : uniquement des polices installées sur l'ordinateur (rien n'est téléchargé).
+     Sans-serif nette pour tout le texte ; monospace seulement pour chiffres, touches, valeurs.
+     (Adwaita Sans est dérivée d'Inter : elle prend le relais si Inter n'est pas installée.) */
+  --sc-font-display: "Inter", "Adwaita Sans", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --sc-font-mono: "Fira Code", "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  --sc-weight-regular: 400;
+  --sc-weight-bold: 600;
+
+  /* Tailles de texte (12 px minimum) et approche : titres plus gros et serrés. */
+  --sc-size-label: 12px; /* libellés, valeurs, touches */
+  --sc-size-body: 14px; /* texte courant, navigation */
+  --sc-size-lead: 16px; /* champ de recherche */
+  --sc-size-title: 22px; /* titres des tiroirs et fenêtres */
+  --sc-size-figure: clamp(30px, 3vw, 40px); /* grands chiffres */
+  --sc-tracking-tight: -0.02em; /* titres et chiffres */
+
+  /* Formes : coins droits, bordures fines, aucun flou ni halo pour l'interface. */
+  --sc-radius: 0px;
+  --sc-border-width: 1px;
+  --sc-control: 30px; /* côté des petits boutons carrés */
+
+  /* Espacements */
+  --sc-space-1: 6px;
+  --sc-space-2: 12px;
+  --sc-space-3: 20px;
+  --sc-space-4: 32px;
+  --sc-space-5: 56px;
+  --sc-edge: 16px; /* marge avec les bords de la fenêtre */
+
+  /* Barre latérale et tiroirs */
+  --sc-sidebar-width: 212px;
+  --sc-drawer-width: 360px;
+  --sc-drawer-wide: 520px; /* l'Accueil */
+
+  /* Mouvement */
+  --sc-fade: 200ms ease;
+  --sc-fade-slow: 600ms ease;
+}

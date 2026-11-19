@@ -1,0 +1,71 @@
+/*
+ * Thème "Galaxie" (par défaut) : interface épurée en noir et blanc, trois niveaux de gris.
+ * Un seul accent coloré (doré), réservé au petit repère de l'élément actif et aux données.
+ * Un thème ne fait que redéfinir des variables --sc-* : la mise en page reste celle de l'app.
+ */
+:root {
+  /* Couleurs de l'interface (contrastes sur noir : texte 21:1, gris 11:1, 6,4:1 et 4,6:1) */
+  --sc-bg: #000000; /* fond : noir pur */
+  --sc-surface: #000000; /* fond des barres, tiroirs et fenêtres */
+  --sc-text: #ffffff; /* texte principal */
+  --sc-text-muted: #b8b8b8; /* gris 1 : texte secondaire, navigation */
+  --sc-text-dim: #8c8c8c; /* gris 2 : libellés, valeurs */
+  --sc-text-faint: #767676; /* gris 3 : texte d'exemple, éléments désactivés */
+  --sc-hairline: rgba(255, 255, 255, 0.14); /* filets de séparation */
+  --sc-border: rgba(255, 255, 255, 0.38); /* contour des champs et des boutons */
+  --sc-border-strong: #ffffff; /* contour au survol, boutons importants */
+  --sc-hover: rgba(255, 255, 255, 0.07); /* fond très léger d'une ligne survolée */
+  --sc-focus: #ffffff; /* anneau du focus clavier */
+  --sc-accent: #d8b46e; /* l'accent coloré : repère actif, courbes, barres */
+  --sc-accent-soft: rgba(216, 180, 110, 0.35);
+  --sc-backdrop: rgba(0, 0, 0, 0.66); /* derrière les fenêtres Paramètres et Aide (sans flou) */
+  --sc-shadow: 0 0 4px #000000, 0 0 1px #000000; /* lisibilité du texte posé sur le ciel */
+
+  /* Couleurs du graphe (lues par le canvas) */
+  --sc-sky: #010205; /* fond du ciel étoilé */
+  --sc-star: #f0e9da; /* étoiles des notes, halos */
+  --sc-star-accent: #d4af6a; /* étoiles les plus connectées, survol, trou noir */
+  --sc-link: #f0e9da; /* lignes entre les notes (leur transparence est gérée par l'app) */
+  --sc-orbit: #f0e9da; /* anneaux des dossiers */
+  --sc-label: #f0e9da; /* noms des notes sur le graphe */
+  --sc-nebula: #947dff; /* nébuleuse du ciel WebGL (scène "galaxie") : nuage, très atténué par l'app */
+  --sc-nebula-glow: #2b6bff; /* nébuleuse : reflets froids, teinte des étoiles lointaines */
+
+  /* Polices : uniquement des polices installées sur l'ordinateur (rien n'est téléchargé).
+     Sans-serif nette pour tout le texte ; monospace seulement pour chiffres, touches, valeurs.
+     (Adwaita Sans est dérivée d'Inter : elle prend le relais si Inter n'est pas installée.) */
+  --sc-font-display: "Inter", "Adwaita Sans", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --sc-font-mono: "Fira Code", "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  --sc-weight-regular: 400;
+  --sc-weight-bold: 600;
+
+  /* Tailles de texte (12 px minimum) et approche : titres plus gros et serrés. */
+  --sc-size-label: 12px; /* libellés, valeurs, touches */
+  --sc-size-body: 14px; /* texte courant, navigation */
+  --sc-size-lead: 16px; /* champ de recherche */
+  --sc-size-title: 22px; /* titres des tiroirs et fenêtres */
+  --sc-size-figure: clamp(30px, 3vw, 40px); /* grands chiffres */
+  --sc-tracking-tight: -0.02em; /* titres et chiffres */
+
+  /* Formes : coins droits, bordures fines, aucun flou ni halo pour l'interface. */
+  --sc-radius: 0px;
+  --sc-border-width: 1px;
+  --sc-control: 30px; /* côté des petits boutons carrés */
+
+  /* Espacements */
+  --sc-space-1: 6px;
+  --sc-space-2: 12px;
+  --sc-space-3: 20px;
+  --sc-space-4: 32px;
+  --sc-space-5: 56px;
+  --sc-edge: 16px; /* marge avec les bords de la fenêtre */
+
+  /* Barre latérale et tiroirs */
+  --sc-sidebar-width: 212px;
+  --sc-drawer-width: 360px;
+  --sc-drawer-wide: 520px; /* l'Accueil */
+
+  /* Mouvement */
+  --sc-fade: 200ms ease;
+  --sc-fade-slow: 600ms ease;
+}
