@@ -37,6 +37,8 @@ const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 const VAULT_DIR = path.resolve(app.getAppPath(), "./vault");
 // Dossier des thèmes, à côté du coffre (jamais dedans).
 const THEMES_DIR = path.resolve(app.getAppPath(), "./themes");
+// Icône de la fenêtre (barre des tâches, Alt-Tab) : PNG fabriqué par `npm run icons`.
+const WINDOW_ICON = path.resolve(app.getAppPath(), "./assets/brand/png/icon-512.png");
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -44,6 +46,7 @@ function createWindow(): void {
     height: 800,
     backgroundColor: "#000000", // évite un flash blanc avant le chargement de la page
     title: "Astrolabe",
+    icon: WINDOW_ICON,
     webPreferences: {
       preload: path.join(__dirname, "../preload/preload.js"),
       contextIsolation: true, // la page et le preload ne partagent pas le même JS

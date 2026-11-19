@@ -1,6 +1,9 @@
 // Point d'entrée de la page : demande les notes au main, les affiche en graphe, dans la
 // barre latérale et ses tiroirs, et met tout à jour quand le coffre change.
 import "./style.css";
+// Symbole de la marque : Vite en fait un vrai fichier (jamais une image "data:", refusée par la
+// politique de sécurité de la page), au même chemin en développement et une fois l'app compilée.
+import symbolUrl from "../../assets/brand/symbol-small.svg";
 import type { AppWindowApi } from "../shared/app-window";
 import type { Note, VaultApi, VaultResult } from "../shared/note";
 import type { ThemesApi } from "../shared/theme";
@@ -22,6 +25,9 @@ declare global {
     themes: ThemesApi;
   }
 }
+
+(document.getElementById("app-logo") as HTMLImageElement).src = symbolUrl;
+(document.getElementById("favicon") as HTMLLinkElement).href = symbolUrl;
 
 const errorEl = document.getElementById("error")!;
 const syncEl = document.getElementById("sync")!;

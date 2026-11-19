@@ -9,5 +9,8 @@ export default defineConfig({
   build: {
     outDir: "../../dist/renderer",
     emptyOutDir: true,
+    // Jamais d'image glissée dans la page en "data:" : la politique de sécurité (CSP) n'autorise
+    // que les fichiers de l'app elle-même. Le logo reste donc un vrai fichier.
+    assetsInlineLimit: 0,
   },
 });

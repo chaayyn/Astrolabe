@@ -9,6 +9,8 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Astrolabe</title>
+    <!-- Icône de la page : son adresse est posée par main.ts (fichier de assets/brand/). -->
+    <link rel="icon" type="image/svg+xml" id="favicon" />
   </head>
   <body>
     <!-- La vue du coffre occupe toute la fenêtre : c'est la vedette.
@@ -22,6 +24,8 @@
     <!-- Barre latérale gauche : quelques mots, un champ de recherche, la navigation. -->
     <nav id="sidebar" aria-label="Navigation principale">
       <header class="side-head">
+        <!-- Symbole de la marque (décoratif : le nom est juste à côté). Image posée par main.ts. -->
+        <img class="app-logo" id="app-logo" alt="" aria-hidden="true" width="18" height="18" />
         <h1 class="app-name">Astrolabe</h1>
         <!-- Clignote à chaque mise à jour du coffre. -->
         <span id="sync" title="Synchronisé avec le dossier du coffre"><span class="visually-hidden">Synchronisé</span></span>

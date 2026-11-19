@@ -317,6 +317,14 @@ html[data-input="pointer"] .icon-btn:focus-visible:not(:hover)::after {
   padding-left: 6px;
 }
 
+/* Le symbole de la marque : couleurs fixes, identiques dans tous les thèmes. */
+.app-logo {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
 .app-name {
   font-size: var(--sc-size-body);
   font-weight: var(--sc-weight-bold);
