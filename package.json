@@ -1,0 +1,25 @@
+{
+  "name": "astrolabe",
+  "productName": "Astrolabe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Astrolabe : visualiseur local de coffre Markdown compatible Obsidian.",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron -c yellow,cyan \"vite\" \"npm run dev:electron\"",
+    "dev:electron": "wait-on tcp:5173 && tsc -p tsconfig.node.json && VITE_DEV_SERVER_URL=http://localhost:5173 electron .",
+    "build": "tsc -p tsconfig.node.json && tsc -p tsconfig.renderer.json && vite build",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "concurrently": "^10.0.7",
+    "electron": "^45.3.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "wait-on": "^9.5.1"
+  },
+  "allowScripts": {
+    "electron@45.3.4": true
+  }
+}

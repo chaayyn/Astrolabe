@@ -1,0 +1,21 @@
+# Dépendances et builds
+node_modules/
+dist/
+
+# Journaux et fichiers système
+*.log
+.DS_Store
+
+# Notes personnelles : ne jamais publier
+vault/
+
+# Réglages locaux de l'éditeur et de l'assistant
+.claude/
+.idea/
+.vscode/
+
+# Secrets éventuels
+.env
+.env.*
+*.pem
+*.key

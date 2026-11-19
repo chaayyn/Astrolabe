@@ -1,0 +1,16 @@
+{
+  // Vérification de types du renderer (la page). Vite fait la vraie compilation,
+  // ce fichier sert seulement à ce que `npm run build` signale les erreurs TS.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true, // permet d'importer package.json (numéro de version)
+    "types": ["vite/client"]
+  },
+  "include": ["src/renderer/**/*.ts", "src/shared/**/*.ts"]
+}
