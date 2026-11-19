@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/lockup-on-dark.svg" />
+    <img src="assets/brand/lockup-on-light.svg" alt="Astrolabe" width="320" />
+  </picture>
+</p>
+
 # Astrolabe
 
 Astrolabe est une application de bureau locale qui affiche un coffre de notes Markdown
