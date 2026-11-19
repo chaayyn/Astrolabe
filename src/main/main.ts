@@ -1,5 +1,5 @@
 // Process principal d'Electron : c'est le "programme" Node qui ouvre la fenêtre.
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, type Input } from "electron";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { getActiveTheme, getThemeSettings, loadThemes, setActiveTheme, setThemeSettings } from "./themes";
@@ -55,6 +55,11 @@ function createWindow(): void {
     },
   });
 
+  // Sans barre de menus, ses raccourcis utiles sont repris ici (voir handleWindowKeys).
+  win.webContents.on("before-input-event", (event, input) => {
+    if (handleWindowKeys(win, input)) event.preventDefault();
+  });
+
   // Prévenir la page à chaque entrée/sortie du plein écran (pour changer l'icône du bouton).
   win.on("enter-full-screen", () => win.webContents.send("window:fullscreen", true));
   win.on("leave-full-screen", () => win.webContents.send("window:fullscreen", false));
@@ -64,6 +69,44 @@ function createWindow(): void {
   } else {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
+}
+
+/**
+ * Pas de barre de menus "File Edit View Window" : l'app a sa propre interface. On la retire
+ * entièrement (plutôt que de la cacher : avec `autoHideMenuBar`, la touche Alt la ferait
+ * réapparaître). Copier, coller, couper, annuler et tout sélectionner continuent de marcher
+ * dans les champs : sous Linux et Windows, c'est la page elle-même qui les gère.
+ * Les raccourcis du menu qui restent utiles sont repris par handleWindowKeys.
+ */
+Menu.setApplicationMenu(null);
+
+/**
+ * Raccourcis de fenêtre (repris de l'ancien menu). Renvoie `true` si la touche a été utilisée.
+ *   F11 : plein écran · Ctrl+Q : quitter
+ *   En développement seulement : F12 ou Ctrl+Maj+I (outils de développement), Ctrl+R ou F5 (recharger).
+ */
+function handleWindowKeys(win: BrowserWindow, input: Input): boolean {
+  if (input.type !== "keyDown") return false;
+  const ctrl = input.control || input.meta;
+  const key = input.key.toLowerCase();
+  if (input.key === "F11" && !ctrl && !input.alt) {
+    win.setFullScreen(!win.isFullScreen());
+    return true;
+  }
+  if (ctrl && !input.shift && !input.alt && key === "q") {
+    app.quit();
+    return true;
+  }
+  if (!devServerUrl) return false;
+  if (input.key === "F12" || (ctrl && input.shift && key === "i")) {
+    win.webContents.toggleDevTools();
+    return true;
+  }
+  if (input.key === "F5" || (ctrl && !input.shift && key === "r")) {
+    win.webContents.reload();
+    return true;
+  }
+  return false;
 }
 
 app.whenReady().then(() => {
