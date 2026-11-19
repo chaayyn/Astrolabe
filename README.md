@@ -67,6 +67,8 @@ organized in subfolders if you like). This folder is **not** shipped with the re
 is ignored by git: create your own, or copy an existing Obsidian vault into it. If it is
 missing, the app simply says so.
 
+Use a different notes folder: `ASTROLABE_VAULT=/path/to/notes npm run dev`.
+
 Settings (active theme, colors, sliders) are stored in the app's data folder
 (`~/.config/astrolabe` on Linux), never inside your vault.
 

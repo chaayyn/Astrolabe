@@ -37,6 +37,8 @@ dans des sous-dossiers si vous le souhaitez). Ce dossier n'est **pas** livré av
 créez le vôtre, ou copiez-y un coffre Obsidian existant. L'app suit les modifications en direct.
 S'il manque, l'app l'indique simplement.
 
+Pour utiliser un autre dossier de notes : `ASTROLABE_VAULT=/chemin/vers/notes npm run dev`.
+
 Les réglages (thème choisi, couleurs, curseurs) sont rangés dans le dossier de données de
 l'app (`~/.config/astrolabe` sous Linux), jamais dans le coffre.
 
