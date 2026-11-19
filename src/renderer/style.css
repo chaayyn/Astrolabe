@@ -1,0 +1,1138 @@
+/*
+ * Feuille de base de l'app : structure et mise en page, style épuré (noir et blanc, coins
+ * droits, filets de 1 px, aucun flou ni halo). Les valeurs visuelles (couleurs, polices,
+ * tailles, espacements, durées) sont des variables --sc-* définies par le THÈME actif
+ * (dossier themes/<id>/theme.css, appliqué par-dessus cette feuille).
+ *
+ * Le bloc :root ci-dessous est un filet de sécurité : ce sont les valeurs du thème
+ * "galaxie", utilisées seulement si aucun thème n'a pu être chargé.
+ */
+:root {
+  /* Couleurs de l'interface (contrastes sur noir : texte 21:1, gris 11:1, 6,4:1 et 4,6:1) */
+  --sc-bg: #000000; /* fond : noir pur */
+  --sc-surface: #000000; /* fond des barres, tiroirs et fenêtres */
+  --sc-text: #ffffff; /* texte principal */
+  --sc-text-muted: #b8b8b8; /* gris 1 : texte secondaire, navigation */
+  --sc-text-dim: #8c8c8c; /* gris 2 : libellés, valeurs */
+  --sc-text-faint: #767676; /* gris 3 : texte d'exemple, éléments désactivés */
+  --sc-hairline: rgba(255, 255, 255, 0.14); /* filets de séparation */
+  --sc-border: rgba(255, 255, 255, 0.38); /* contour des champs et des boutons */
+  --sc-border-strong: #ffffff; /* contour au survol, boutons importants */
+  --sc-hover: rgba(255, 255, 255, 0.07); /* fond très léger d'une ligne survolée */
+  --sc-focus: #ffffff; /* anneau du focus clavier */
+  --sc-accent: #d8b46e; /* l'accent coloré : repère actif, courbes, barres */
+  --sc-accent-soft: rgba(216, 180, 110, 0.35);
+  --sc-backdrop: rgba(0, 0, 0, 0.66); /* derrière les fenêtres Paramètres et Aide (sans flou) */
+  --sc-shadow: 0 0 4px #000000, 0 0 1px #000000; /* lisibilité du texte posé sur le ciel */
+
+  /* Couleurs du graphe (lues par le canvas) */
+  --sc-sky: #010205; /* fond du ciel étoilé */
+  --sc-star: #f0e9da; /* étoiles des notes, halos */
+  --sc-star-accent: #d4af6a; /* étoiles les plus connectées, survol, trou noir */
+  --sc-link: #f0e9da; /* lignes entre les notes (leur transparence est gérée par l'app) */
+  --sc-orbit: #f0e9da; /* anneaux des dossiers */
+  --sc-label: #f0e9da; /* noms des notes sur le graphe */
+  --sc-nebula: #947dff; /* nébuleuse du ciel WebGL (scène "galaxie") : nuage, très atténué par l'app */
+  --sc-nebula-glow: #2b6bff; /* nébuleuse : reflets froids, teinte des étoiles lointaines */
+
+  /* Polices : uniquement des polices installées sur l'ordinateur (rien n'est téléchargé).
+     Sans-serif nette pour tout le texte ; monospace seulement pour chiffres, touches, valeurs.
+     (Adwaita Sans est dérivée d'Inter : elle prend le relais si Inter n'est pas installée.) */
+  --sc-font-display: "Inter", "Adwaita Sans", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --sc-font-mono: "Fira Code", "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  --sc-weight-regular: 400;
+  --sc-weight-bold: 600;
+
+  /* Tailles de texte (12 px minimum) et approche : titres plus gros et serrés. */
+  --sc-size-label: 12px; /* libellés, valeurs, touches */
+  --sc-size-body: 14px; /* texte courant, navigation */
+  --sc-size-lead: 16px; /* champ de recherche */
+  --sc-size-title: 22px; /* titres des tiroirs et fenêtres */
+  --sc-size-figure: clamp(30px, 3vw, 40px); /* grands chiffres */
+  --sc-tracking-tight: -0.02em; /* titres et chiffres */
+
+  /* Formes : coins droits, bordures fines, aucun flou ni halo pour l'interface. */
+  --sc-radius: 0px;
+  --sc-border-width: 1px;
+  --sc-control: 30px; /* côté des petits boutons carrés */
+
+  /* Espacements */
+  --sc-space-1: 6px;
+  --sc-space-2: 12px;
+  --sc-space-3: 20px;
+  --sc-space-4: 32px;
+  --sc-space-5: 56px;
+  --sc-edge: 16px; /* marge avec les bords de la fenêtre */
+
+  /* Barre latérale et tiroirs */
+  --sc-sidebar-width: 212px;
+  --sc-drawer-width: 360px;
+  --sc-drawer-wide: 520px; /* l'Accueil */
+
+  /* Mouvement */
+  --sc-fade: 200ms ease;
+  --sc-fade-slow: 600ms ease;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────────────── */
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden; /* tout est dans le canvas et en surimpression */
+  background: var(--sc-bg);
+  color: var(--sc-text);
+  font: var(--sc-weight-regular) var(--sc-size-body) / 1.45 var(--sc-font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border-radius: var(--sc-radius);
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+kbd {
+  font: var(--sc-size-label) var(--sc-font-mono);
+}
+
+svg {
+  flex: none;
+}
+
+/* Un élément caché l'est toujours, quel que soit son style d'affichage. */
+[hidden] {
+  display: none !important;
+}
+
+/* Texte lu par les lecteurs d'écran seulement. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* La scène (derrière) et le calque du moteur (devant) couvrent toute la fenêtre. */
+#scene,
+.scene-canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  pointer-events: none; /* la souris va au calque du moteur */
+}
+
+#graph {
+  position: fixed;
+  inset: 0;
+  display: block;
+  cursor: grab;
+}
+
+#graph.dragging {
+  cursor: grabbing;
+}
+
+/* Focus clavier : un contour blanc de 2 px, décalé, partout. */
+:focus-visible {
+  outline: 2px solid var(--sc-focus);
+  outline-offset: 2px;
+}
+
+/*
+ * Pas d'anneau tant qu'on n'a pas navigué au clavier (Tab, flèches) : ni après un clic,
+ * ni sur le bouton qui récupère le focus à la fermeture d'une fenêtre, ni après un raccourci.
+ * (main.ts note la façon de se déplacer dans data-input.)
+ */
+html[data-input="pointer"] :focus-visible {
+  outline: none !important;
+}
+
+html[data-input="pointer"] .icon-btn:focus-visible:not(:hover)::after {
+  opacity: 0;
+}
+
+/* Léger fondu quand une valeur change. */
+.fade {
+  animation: value-fade var(--sc-fade-slow);
+}
+
+@keyframes value-fade {
+  from {
+    opacity: 0.25;
+  }
+}
+
+/* Petits libellés de section : gris, sans majuscules forcées. */
+.label {
+  margin: 0 0 var(--sc-space-1);
+  color: var(--sc-text-dim);
+  font: var(--sc-weight-regular) var(--sc-size-label) / 1.4 var(--sc-font-display);
+  letter-spacing: 0.01em;
+}
+
+.empty {
+  display: block;
+  padding: 8px 0;
+  color: var(--sc-text-dim);
+}
+
+/* ── Boutons ───────────────────────────────────────────────────────────────────────── */
+
+/* Bouton texte : rectangle à coins droits, contour 1 px ; au survol, les couleurs s'inversent. */
+.btn {
+  padding: 6px 12px;
+  border: var(--sc-border-width) solid var(--sc-border-strong);
+  background: transparent;
+  color: var(--sc-text);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.btn:hover {
+  background: var(--sc-text);
+  color: var(--sc-bg);
+}
+
+/* Petit bouton carré à icône (haut à droite, barre du bas, fermetures). */
+.icon-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--sc-control);
+  height: var(--sc-control);
+  padding: 0;
+  border: var(--sc-border-width) solid var(--sc-border);
+  background: var(--sc-surface);
+  color: var(--sc-text);
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.icon-btn:hover {
+  border-color: var(--sc-border-strong);
+  background: var(--sc-text);
+  color: var(--sc-bg);
+}
+
+/* Petite bulle d'aide (nom + raccourci), sous le bouton par défaut. */
+.icon-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  padding: 3px 8px;
+  border: var(--sc-border-width) solid var(--sc-hairline);
+  background: var(--sc-surface);
+  color: var(--sc-text-muted);
+  font: var(--sc-size-label) / 1.4 var(--sc-font-display);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--sc-fade);
+}
+
+.icon-btn[data-tip]:hover::after,
+.icon-btn[data-tip]:focus-visible::after {
+  opacity: 1;
+  transition-delay: 300ms;
+}
+
+/* Bascules : l'icône suit l'état (pause / lecture, entrer / sortir du plein écran). */
+#tool-pause .icon-play,
+#tool-pause[aria-pressed="true"] .icon-pause,
+#tool-fullscreen .icon-exit,
+#tool-fullscreen[aria-pressed="true"] .icon-enter {
+  display: none;
+}
+
+#tool-pause[aria-pressed="true"] .icon-play,
+#tool-fullscreen[aria-pressed="true"] .icon-exit {
+  display: block;
+}
+
+/* ── Barre latérale ────────────────────────────────────────────────────────────────── */
+
+#sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: var(--sc-sidebar-width);
+  padding: var(--sc-space-3) var(--sc-space-2) var(--sc-space-2);
+  overflow-y: auto;
+  border-right: var(--sc-border-width) solid var(--sc-hairline);
+  background: var(--sc-surface);
+}
+
+/* Repliée : elle disparaît ; le petit bouton carré en haut à gauche permet de la rouvrir. */
+#sidebar.collapsed {
+  display: none;
+}
+
+.side-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--sc-control);
+  margin-bottom: var(--sc-space-3);
+  padding-left: 6px;
+}
+
+.app-name {
+  font-size: var(--sc-size-body);
+  font-weight: var(--sc-weight-bold);
+  letter-spacing: var(--sc-tracking-tight);
+  white-space: nowrap;
+}
+
+/* Le minuscule repère coloré : un point qui s'allume quand le coffre change. */
+#sync {
+  width: 5px;
+  height: 5px;
+  background: var(--sc-text-faint);
+}
+
+#sync.pulse {
+  animation: sync-pulse 1.2s ease-out;
+}
+
+@keyframes sync-pulse {
+  0%,
+  40% {
+    background: var(--sc-accent);
+  }
+}
+
+.side-collapse {
+  margin-left: auto;
+  border-color: transparent;
+}
+
+#sidebar-open {
+  position: fixed;
+  top: var(--sc-edge);
+  left: var(--sc-edge);
+  z-index: 4;
+}
+
+/* Barre repliée + tiroir ouvert : le bouton reste au-dessus, le titre du tiroir se décale. */
+body:has(#sidebar.collapsed) .drawer-head {
+  padding-left: calc(var(--sc-control) + var(--sc-space-1));
+}
+
+#sidebar-open[data-tip]::after {
+  right: auto;
+  left: 0;
+}
+
+/* Le faux champ de recherche : contour 1 px, loupe, touche H à droite. */
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-bottom: var(--sc-space-3);
+  padding: 0 8px;
+  border: var(--sc-border-width) solid var(--sc-border);
+  background: transparent;
+  color: var(--sc-text-faint);
+  text-align: left;
+}
+
+.search-field:hover {
+  border-color: var(--sc-border-strong);
+}
+
+.search-field svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--sc-text-dim);
+  stroke-width: 1.5;
+}
+
+.search-placeholder {
+  flex: 1;
+}
+
+.search-key {
+  color: var(--sc-text-dim);
+}
+
+#error {
+  margin: 0 0 var(--sc-space-2);
+  padding: 8px;
+  border: var(--sc-border-width) solid var(--sc-border-strong);
+  color: var(--sc-text);
+  font-size: var(--sc-size-label);
+}
+
+/* Navigation : des mots simples ; l'élément actif a un petit trait vertical à gauche. */
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 6px 5px 12px;
+  border: 0;
+  background: none;
+  color: var(--sc-text-muted);
+  text-align: left;
+}
+
+.nav-item:hover,
+.nav-item[aria-current],
+.nav-item[aria-expanded="true"] {
+  color: var(--sc-text);
+}
+
+.nav-item[aria-current] {
+  font-weight: var(--sc-weight-bold);
+}
+
+.nav-item[aria-current]::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: 0;
+  width: 2px;
+  background: var(--sc-accent);
+}
+
+.nav-count {
+  color: var(--sc-text-dim);
+  font: var(--sc-size-label) var(--sc-font-mono);
+}
+
+.nav-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--sc-space-2);
+  padding: 5px 6px 5px 10px;
+  border: 0;
+  background: none;
+  color: var(--sc-text-faint);
+  cursor: not-allowed;
+}
+
+.nav-add svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.side-foot {
+  margin-top: auto;
+  padding-top: var(--sc-space-3);
+}
+
+.app-version {
+  display: block;
+  padding: 6px 0 0 12px;
+  color: var(--sc-text-faint);
+  font: var(--sc-size-label) var(--sc-font-mono);
+}
+
+/* ── Tiroirs ───────────────────────────────────────────────────────────────────────── */
+
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--sc-sidebar-width);
+  z-index: 2;
+  box-sizing: border-box;
+  width: min(var(--sc-drawer-width), calc(100vw - var(--sc-sidebar-width)));
+  padding: var(--sc-space-3) var(--sc-space-3) var(--sc-space-4);
+  overflow-y: auto;
+  border-right: var(--sc-border-width) solid var(--sc-hairline);
+  background: var(--sc-surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sc-border) transparent;
+}
+
+.drawer-wide {
+  width: min(var(--sc-drawer-wide), calc(100vw - var(--sc-sidebar-width)));
+}
+
+/* Barre latérale repliée : le tiroir se colle au bord gauche. */
+body:has(#sidebar.collapsed) .drawer {
+  left: 0;
+  width: min(var(--sc-drawer-width), 100vw);
+}
+
+body:has(#sidebar.collapsed) .drawer-wide {
+  width: min(var(--sc-drawer-wide), 100vw);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  margin-bottom: var(--sc-space-3);
+}
+
+.drawer-head h2,
+.panel-head h2 {
+  font-size: var(--sc-size-title);
+  font-weight: var(--sc-weight-bold);
+  letter-spacing: var(--sc-tracking-tight);
+  line-height: 1.15;
+}
+
+.drawer-head h2:focus {
+  outline: none;
+}
+
+.drawer-meta {
+  color: var(--sc-text-dim);
+  font: var(--sc-size-label) var(--sc-font-mono);
+}
+
+.drawer-close {
+  margin-left: auto;
+  border-color: transparent;
+}
+
+.drawer section {
+  margin-top: var(--sc-space-4);
+}
+
+.drawer-stats {
+  color: var(--sc-text-muted);
+}
+
+/* Lignes : nom à gauche, valeur à droite, séparées par des filets fins. */
+.lines > li {
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+.lines > li:last-child {
+  border-bottom: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+.line {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sc-space-2);
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 4px;
+  border: 0;
+  background: none;
+  color: var(--sc-text);
+  text-align: left;
+}
+
+button.line:hover {
+  background: var(--sc-hover);
+}
+
+.line-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-meta {
+  color: var(--sc-text-dim);
+  font: var(--sc-size-label) var(--sc-font-mono);
+  white-space: nowrap;
+}
+
+.kind-removed .line-name,
+.kind-error .line-name {
+  color: var(--sc-text-dim);
+}
+
+/* Barre de données sous un nom (sections par groupe) : trait fin à la couleur d'accent. */
+.line.with-bar {
+  flex-wrap: wrap;
+}
+
+.line-track {
+  flex-basis: 100%;
+  height: 2px;
+}
+
+.line-bar {
+  display: block;
+  height: 100%;
+  background: var(--sc-accent);
+}
+
+/* Arborescence */
+.tree .tree {
+  border: 0;
+}
+
+#tree > .tree > li {
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+.twisty {
+  width: 10px;
+  color: var(--sc-text-dim);
+  font-size: var(--sc-size-label);
+}
+
+.line.folder .line-name {
+  color: var(--sc-text-muted);
+}
+
+/* Courbes d'activité */
+.spark,
+#home-spark {
+  display: block;
+  width: 100%;
+  height: 44px;
+}
+
+.spark-line {
+  fill: none;
+  stroke: var(--sc-accent);
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+
+.spark-dot {
+  fill: var(--sc-accent);
+}
+
+/* ── Accueil ───────────────────────────────────────────────────────────────────────── */
+
+.home-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border: var(--sc-border-width) solid var(--sc-border);
+}
+
+.home-search:focus-within {
+  border-color: var(--sc-border-strong);
+}
+
+.home-search svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--sc-text-dim);
+  stroke-width: 1.5;
+}
+
+#home-search {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sc-text);
+  font-size: var(--sc-size-lead);
+  outline: none;
+}
+
+#home-search::placeholder {
+  color: var(--sc-text-faint);
+}
+
+#home-results {
+  max-height: 46vh;
+  margin-top: var(--sc-space-1);
+  overflow-y: auto;
+  border-bottom: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+.result {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--sc-space-2);
+  padding: 8px 8px 8px 12px;
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
+  cursor: pointer;
+}
+
+.result[aria-selected="true"] {
+  position: relative;
+  background: var(--sc-hover);
+}
+
+.result[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 2px;
+  background: var(--sc-accent);
+}
+
+.result-folder {
+  color: var(--sc-text-dim);
+  font: var(--sc-size-label) var(--sc-font-mono);
+}
+
+.result-snippet {
+  grid-column: 1 / -1;
+  color: var(--sc-text-muted);
+  font-size: 13px;
+}
+
+#home-results mark {
+  background: none;
+  color: var(--sc-text);
+  font-weight: var(--sc-weight-bold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Grands chiffres en blanc, libellés gris. */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: var(--sc-space-4);
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+.figure {
+  padding: var(--sc-space-2) var(--sc-space-2) 0 0;
+}
+
+.figure dt {
+  margin: 0;
+}
+
+.figure dd {
+  font-size: var(--sc-size-figure);
+  font-weight: var(--sc-weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--sc-tracking-tight);
+  line-height: 1.1;
+}
+
+.drawer-spark {
+  margin-top: var(--sc-space-4);
+}
+
+.drawer-spark figcaption {
+  margin: var(--sc-space-1) 0 0;
+}
+
+@media (max-width: 520px) {
+  .figures {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Haut à droite, barre du bas, FPS, avertissement ───────────────────────────────── */
+
+#corner {
+  position: fixed;
+  top: var(--sc-edge);
+  right: var(--sc-edge);
+  z-index: 1;
+  display: flex;
+  gap: var(--sc-space-1);
+}
+
+#fps {
+  position: fixed;
+  top: calc(var(--sc-edge) + var(--sc-control) + 10px);
+  right: var(--sc-edge);
+  color: var(--sc-text-dim);
+  font: var(--sc-size-label) var(--sc-font-mono);
+  text-shadow: var(--sc-shadow);
+  pointer-events: none;
+}
+
+#fps.low {
+  color: var(--sc-text);
+}
+
+#notice {
+  position: fixed;
+  top: var(--sc-edge);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 2 * (var(--sc-edge) + 120px));
+  padding: 6px 12px;
+  border: var(--sc-border-width) solid var(--sc-hairline);
+  background: var(--sc-surface);
+  color: var(--sc-text-muted);
+  font-size: var(--sc-size-label);
+  pointer-events: none;
+}
+
+/*
+ * Zoom et pause : trois petits carrés empilés en bas à droite, loin des tiroirs (à gauche)
+ * et de la bande des raccourcis (au centre). Ils s'estompent quand la souris ne bouge pas.
+ */
+#toolbar {
+  position: fixed;
+  right: var(--sc-edge);
+  bottom: var(--sc-edge);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-1);
+  transition: opacity var(--sc-fade-slow);
+}
+
+#toolbar .icon-btn[data-tip]::after {
+  top: 50%;
+  right: calc(100% + 6px);
+  transform: translateY(-50%);
+}
+
+#toolbar.idle:not(:hover):not(:focus-within) {
+  opacity: 0.35;
+}
+
+/* Bande des raccourcis : texte simple gris, touche en blanc, centrée sur la fenêtre. */
+#keybar {
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  max-width: calc(100vw - 2 * max(var(--inset, 0px) + 16px, var(--sc-edge) + 96px));
+  padding: 0 12px;
+  overflow: hidden;
+  color: var(--sc-text-dim);
+  font-size: var(--sc-size-label);
+  line-height: 1.6;
+  white-space: nowrap;
+  text-shadow: var(--sc-shadow);
+  transition: opacity var(--sc-fade-slow);
+}
+
+#keybar.idle:not(:hover),
+body.veiled #keybar {
+  opacity: 0;
+}
+
+/* Rien à montrer (place trop étroite) ou un tiroir ouvert par-dessus : la bande s'efface. */
+#keybar:empty,
+body:has(.drawer:not([hidden])) #keybar {
+  visibility: hidden;
+}
+
+.keybar-item {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.keybar-item + .keybar-item::before {
+  content: "·";
+  margin: 0 10px;
+  color: var(--sc-text-faint);
+}
+
+.keybar-key {
+  color: var(--sc-text);
+}
+
+/* ── Fenêtres Paramètres et Aide ───────────────────────────────────────────────────── */
+
+.panel {
+  box-sizing: border-box;
+  width: min(640px, calc(100vw - 2 * var(--sc-edge)));
+  max-height: calc(100vh - 2 * var(--sc-space-4));
+  padding: 0;
+  border: var(--sc-border-width) solid var(--sc-border);
+  background: var(--sc-surface);
+  color: var(--sc-text);
+}
+
+.panel[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel::backdrop {
+  background: var(--sc-backdrop);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sc-space-3) var(--sc-space-3) var(--sc-space-2);
+  border-bottom: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+#settings-body,
+#help-body {
+  flex: 1;
+  padding: 0 var(--sc-space-3) var(--sc-space-3);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sc-border) transparent;
+}
+
+.panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-space-1);
+  justify-content: space-between;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+/* Paramètres : un groupe par section, séparé par un filet. */
+.set-group {
+  padding: var(--sc-space-3) 0 var(--sc-space-1);
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+.set-group:first-child {
+  border-top: 0;
+}
+
+.set-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--sc-space-1);
+}
+
+.set-group-head .label {
+  margin: 0;
+  color: var(--sc-text);
+  font-size: var(--sc-size-body);
+  font-weight: var(--sc-weight-bold);
+}
+
+/* Petit lien texte ("Réinitialiser"). */
+.text-toggle {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--sc-text-dim);
+  font-size: var(--sc-size-label);
+}
+
+.text-toggle:hover {
+  color: var(--sc-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.set-field {
+  display: grid;
+  grid-template-columns: 1fr minmax(120px, 180px) 52px;
+  gap: var(--sc-space-2);
+  align-items: center;
+  min-height: 34px;
+}
+
+.set-field label {
+  color: var(--sc-text-muted);
+}
+
+.set-field output {
+  color: var(--sc-text-dim);
+  font: var(--sc-size-label) var(--sc-font-mono);
+  text-align: right;
+}
+
+.set-toggle input,
+.set-color input,
+.set-choice select {
+  justify-self: start;
+}
+
+/* Curseur : un trait de 1 px et un petit carré. */
+input[type="range"] {
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--sc-border);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  width: 11px;
+  height: 11px;
+  margin-top: -5px;
+  border: 0;
+  background: var(--sc-text);
+  appearance: none;
+}
+
+/* Case à cocher : un carré contouré, plein quand elle est cochée. */
+input[type="checkbox"] {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: var(--sc-border-width) solid var(--sc-border-strong);
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--sc-text);
+}
+
+/* Couleur : un petit rectangle plein, contour 1 px. */
+input[type="color"] {
+  width: 34px;
+  height: 20px;
+  padding: 0;
+  border: var(--sc-border-width) solid var(--sc-border);
+  background: none;
+  cursor: pointer;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: 0;
+}
+
+select {
+  padding: 3px 6px;
+  border: var(--sc-border-width) solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  background: var(--sc-surface);
+}
+
+/* Thèmes : le thème appliqué porte le petit repère, comme l'élément actif de la navigation. */
+.theme-choice[aria-pressed="true"] {
+  font-weight: var(--sc-weight-bold);
+}
+
+.theme-choice[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: -10px;
+  width: 2px;
+  background: var(--sc-accent);
+}
+
+/* Aide : touches à gauche (petits rectangles contourés), description à droite. */
+.help-group {
+  padding-top: var(--sc-space-3);
+}
+
+.help-group h3.label {
+  color: var(--sc-text);
+  font-size: var(--sc-size-body);
+  font-weight: var(--sc-weight-bold);
+}
+
+.help-list {
+  display: grid;
+  grid-template-columns: minmax(130px, 34%) 1fr;
+}
+
+.help-list dt,
+.help-list dd {
+  padding: 7px 0;
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
+}
+
+.help-list dd {
+  color: var(--sc-text-muted);
+}
+
+.keycap {
+  display: inline-block;
+  min-width: 10px;
+  padding: 0 6px;
+  border: var(--sc-border-width) solid var(--sc-border);
+  color: var(--sc-text);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.help-sep {
+  color: var(--sc-text-dim);
+  font-size: var(--sc-size-label);
+}
+
+/* ── Mouvement réduit ──────────────────────────────────────────────────────────────── */
+/* Si le système demande moins d'animations : les fondus deviennent instantanés. */
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+  transition-delay: 0ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+}

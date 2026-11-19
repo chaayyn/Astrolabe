@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Politique de sécurité : la page ne charge que ses propres fichiers. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Astrolabe</title>
+  </head>
+  <body>
+    <!-- La vue du coffre occupe toute la fenêtre : c'est la vedette.
+         #scene : la scène du thème y place son dessin (derrière).
+         #graph : le calque du moteur (noms des notes, souris), transparent, au-dessus. -->
+    <main id="stage" aria-label="Vue du coffre en 3D">
+      <div id="scene" aria-hidden="true"></div>
+      <canvas id="graph" aria-label="Galaxie des notes : glisser pour tourner, molette pour zoomer"></canvas>
+    </main>
+
+    <!-- Barre latérale gauche : quelques mots, un champ de recherche, la navigation. -->
+    <nav id="sidebar" aria-label="Navigation principale">
+      <header class="side-head">
+        <h1 class="app-name">Astrolabe</h1>
+        <!-- Clignote à chaque mise à jour du coffre. -->
+        <span id="sync" title="Synchronisé avec le dossier du coffre"><span class="visually-hidden">Synchronisé</span></span>
+        <button class="icon-btn side-collapse" id="sidebar-collapse" aria-controls="sidebar" data-tip="Replier · B" aria-label="Replier la barre latérale">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM9.5 5v14M16 10l-2 2 2 2" /></svg>
+        </button>
+      </header>
+
+      <!-- Ressemble à un champ : un clic (ou la touche H) ouvre l'Accueil, recherche prête. -->
+      <button class="search-field" id="search-open" aria-controls="drawer-home" aria-label="Rechercher une note (H)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l5 5" /></svg>
+        <span class="search-placeholder">Rechercher</span>
+        <kbd class="search-key">H</kbd>
+      </button>
+
+      <p id="error" role="alert" hidden></p>
+
+      <ul class="nav-list">
+        <li><button class="nav-item" data-drawer="home" aria-controls="drawer-home" aria-expanded="false">Accueil</button></li>
+        <li><button class="nav-item" data-drawer="notes" aria-controls="drawer-notes" aria-expanded="false">Notes</button></li>
+        <li><button class="nav-item" data-drawer="activity" aria-controls="drawer-activity" aria-expanded="false">Activité</button></li>
+        <li>
+          <button class="nav-item" data-drawer="tasks" aria-controls="drawer-tasks" aria-expanded="false">
+            Tâches <span class="nav-count" id="nav-tasks-count"></span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Pas encore de création de note : l'entrée est visible mais désactivée. -->
+      <button class="nav-add" disabled title="Bientôt">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
+        Ajouter
+      </button>
+
+      <footer class="side-foot">
+        <button class="nav-item" id="settings-open" aria-haspopup="dialog" aria-controls="settings" aria-expanded="false" title="Paramètres ( , )">Paramètres</button>
+        <button class="nav-item" id="help-open" aria-haspopup="dialog" aria-controls="help" aria-expanded="false" title="Raccourcis ( ? )">Raccourcis</button>
+        <span class="app-version" id="app-version"></span>
+      </footer>
+    </nav>
+
+    <!-- Visible seulement quand la barre latérale est repliée : pour la rouvrir. -->
+    <button class="icon-btn" id="sidebar-open" aria-controls="sidebar" data-tip="Afficher la barre · B" aria-label="Afficher la barre latérale" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM9.5 5v14M14 10l2 2-2 2" /></svg>
+    </button>
+
+    <!-- ── Tiroirs : un seul ouvert à la fois, à droite de la barre latérale. ── -->
+
+    <!-- Accueil : recherche, grands chiffres, courbe, listes. Touche H. -->
+    <section class="drawer drawer-wide" id="drawer-home" aria-labelledby="home-title" hidden>
+      <header class="drawer-head">
+        <h2 id="home-title">Accueil</h2>
+        <span class="drawer-meta" id="home-date"></span>
+        <button class="icon-btn drawer-close" aria-label="Fermer l'accueil (Échap)" data-tip="Fermer · Échap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </header>
+
+      <div class="home-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l5 5" /></svg>
+        <input
+          id="home-search"
+          type="text"
+          placeholder="Rechercher une note"
+          role="combobox"
+          aria-label="Rechercher une note"
+          aria-autocomplete="list"
+          aria-controls="home-results"
+          aria-expanded="false"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <ul id="home-results" role="listbox" aria-label="Résultats" hidden></ul>
+
+      <dl class="figures" id="home-numbers"></dl>
+
+      <figure class="drawer-spark">
+        <svg id="home-spark" viewBox="0 0 600 48" preserveAspectRatio="none" role="img"></svg>
+        <figcaption class="label" id="home-spark-caption">Notes modifiées · 30 jours</figcaption>
+      </figure>
+
+      <section aria-labelledby="home-top-title">
+        <h3 class="label" id="home-top-title">Plus connectées</h3>
+        <ul class="lines" id="home-top"></ul>
+      </section>
+      <section aria-labelledby="home-groups-title">
+        <h3 class="label" id="home-groups-title">Sections par groupe</h3>
+        <ul class="lines" id="home-groups"></ul>
+      </section>
+      <section aria-labelledby="home-recent-title">
+        <h3 class="label" id="home-recent-title">Activité récente</h3>
+        <ul class="lines" id="home-recent"></ul>
+      </section>
+    </section>
+
+    <!-- Notes : l'arborescence du coffre. -->
+    <section class="drawer" id="drawer-notes" aria-labelledby="notes-title" hidden>
+      <header class="drawer-head">
+        <h2 id="notes-title">Notes</h2>
+        <button class="icon-btn drawer-close" aria-label="Fermer les notes (Échap)" data-tip="Fermer · Échap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </header>
+      <div id="tree"></div>
+    </section>
+
+    <!-- Activité : stats du coffre, modifications récentes, courbe 14 jours, journal. -->
+    <section class="drawer" id="drawer-activity" aria-labelledby="activity-drawer-title" hidden>
+      <header class="drawer-head">
+        <h2 id="activity-drawer-title">Activité</h2>
+        <button class="icon-btn drawer-close" aria-label="Fermer l'activité (Échap)" data-tip="Fermer · Échap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </header>
+      <p id="rail-stats" class="drawer-stats"></p>
+      <section aria-labelledby="activity-title">
+        <h3 class="label" id="activity-title">Notes modifiées · 14 jours</h3>
+        <svg class="spark" id="activity-spark" viewBox="0 0 260 44" preserveAspectRatio="none" role="img"></svg>
+      </section>
+      <section aria-labelledby="recent-title">
+        <h3 class="label" id="recent-title">Récemment</h3>
+        <ul class="lines" id="recent-list"></ul>
+      </section>
+      <section aria-labelledby="journal-title">
+        <h3 class="label" id="journal-title">Depuis le lancement</h3>
+        <div id="journal"></div>
+      </section>
+    </section>
+
+    <!-- Tâches : les cases non cochées des notes. -->
+    <section class="drawer" id="drawer-tasks" aria-labelledby="tasks-title" hidden>
+      <header class="drawer-head">
+        <h2 id="tasks-title">Tâches</h2>
+        <span class="drawer-meta" id="tasks-count"></span>
+        <button class="icon-btn drawer-close" aria-label="Fermer les tâches (Échap)" data-tip="Fermer · Échap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </header>
+      <ul class="lines" id="tasks-list"></ul>
+    </section>
+
+    <!-- ── Haut à droite : petites icônes carrées ── -->
+    <div id="corner" role="group" aria-label="Vue et réglages">
+      <button class="icon-btn" id="tool-recenter" data-tip="Recentrer · 0" aria-label="Recentrer la vue">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" /><circle cx="12" cy="12" r="1.2" /><path d="M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21" /></svg>
+      </button>
+      <button class="icon-btn" id="tool-fullscreen" data-tip="Plein écran · F" aria-label="Plein écran" aria-pressed="false">
+        <svg class="icon-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /></svg>
+        <svg class="icon-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" /></svg>
+      </button>
+      <button class="icon-btn" id="corner-settings" aria-haspopup="dialog" aria-controls="settings" data-tip="Paramètres · ," aria-label="Paramètres">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg>
+      </button>
+    </div>
+
+    <!-- Compteur d'images par seconde : masqué par défaut, touche G pour l'afficher. -->
+    <p id="fps" aria-live="off" hidden>— fps</p>
+
+    <!-- Avertissement discret et passager (ex. ciel 3D indisponible : affichage classique). -->
+    <p id="notice" role="status" hidden></p>
+
+    <!-- ── Bas : zoom et pause (icônes fines), puis la bande des raccourcis ── -->
+    <div id="toolbar" role="toolbar" aria-label="Commandes de la vue">
+      <button class="icon-btn" id="tool-zoom-out" data-tip="Zoom arrière · −" aria-label="Zoom arrière">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+      </button>
+      <button class="icon-btn" id="tool-zoom-in" data-tip="Zoom avant · +" aria-label="Zoom avant">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12" /></svg>
+      </button>
+      <button class="icon-btn" id="tool-pause" data-tip="Pause rotation · Espace" aria-label="Pause rotation" aria-pressed="false">
+        <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 7v10M14.5 7v10" /></svg>
+        <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7l8 5-8 5z" /></svg>
+      </button>
+    </div>
+
+    <!-- Bande des raccourcis essentiels, tout en bas (remplie par shortcuts.ts). Informative :
+         rien n'y est cliquable ni ne prend le focus. -->
+    <p id="keybar" role="note" aria-label="Raccourcis essentiels"></p>
+
+    <!-- ── Fenêtres (dialogues modaux : le focus y reste tant qu'elles sont ouvertes) ── -->
+
+    <!-- Paramètres : contenu fabriqué par settings.ts à partir des réglages déclarés par le
+         moteur et par la scène active. -->
+    <dialog id="settings" class="panel" aria-labelledby="settings-title">
+      <header class="panel-head">
+        <h2 id="settings-title">Paramètres</h2>
+        <button class="icon-btn" id="settings-close" aria-label="Fermer les paramètres (Échap)" data-tip="Fermer · Échap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </header>
+      <div id="settings-body"></div>
+      <footer class="panel-foot">
+        <button class="btn" id="settings-reset-all">Tout réinitialiser pour ce thème</button>
+        <button class="btn" id="settings-shortcuts">Raccourcis</button>
+      </footer>
+    </dialog>
+
+    <!-- Aide : la liste des raccourcis, fabriquée par shortcuts.ts à partir d'une liste unique. -->
+    <dialog id="help" class="panel" aria-labelledby="help-title">
+      <header class="panel-head">
+        <h2 id="help-title">Raccourcis</h2>
+        <button class="icon-btn" id="help-close" aria-label="Fermer l'aide (Échap)" data-tip="Fermer · Échap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </header>
+      <div id="help-body"></div>
+    </dialog>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
