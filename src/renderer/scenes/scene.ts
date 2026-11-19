@@ -54,6 +54,13 @@ export interface Scene {
   render(frame: SceneFrame): void;
   /** Libère tout : canvas retirés de la page, mémoire rendue. Aucune boucle ne doit rester. */
   dispose(): void;
+  /**
+   * Facultatif : déplace les positions À L'ÉCRAN des étoiles avant le dessin (ex. déviation par
+   * la lentille du trou noir). Le moteur l'appelle juste après la projection, et utilise ensuite
+   * ces positions déplacées pour TOUT : survol, clic, noms des notes. On peut aussi rendre une
+   * étoile invisible (`visible = false`) si elle est cachée.
+   */
+  displace?(screen: Map<GraphNode, Projected>, camera: Camera): void;
 }
 
 /**

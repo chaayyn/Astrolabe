@@ -2,7 +2,7 @@
 // liens, étoiles avec halo, trou noir). Elle ne fait que dessiner : positions, survol et
 // caméra viennent du moteur. C'est la scène par défaut, et le repli si une autre manque.
 import type { Projected } from "../../camera";
-import type { GraphNode, Orbit } from "../../graph";
+import type { GraphEdge, GraphNode, Orbit } from "../../graph";
 import type { ParamDef, ParamValues } from "../../params";
 import { depthFade, type Palette, type Scene, type SceneFrame, type SceneGraph } from "../scene";
 import { drawBlackHole } from "./blackhole";
@@ -42,13 +42,13 @@ export class ClassicScene implements Scene {
    */
   private holeMask: number | null = null;
   /** Valeurs courantes des réglages (multiplicateurs, 1 = rendu habituel). */
-  private opts = { glow: 1, size: 1, links: 1 };
+  protected opts = { glow: 1, size: 1, links: 1 };
   private canvas = document.createElement("canvas");
-  private ctx = this.canvas.getContext("2d")!;
+  protected ctx = this.canvas.getContext("2d")!;
   /** Ciel étoilé du fond (3 couches pré-dessinées). */
   private sky = new Starfield();
-  private palette!: Palette;
-  private graph: SceneGraph = { nodes: [], edges: [], orbits: [], outerRadius: 0 };
+  protected palette!: Palette;
+  protected graph: SceneGraph = { nodes: [], edges: [], orbits: [], outerRadius: 0 };
   /** Halos pré-dessinés : bien plus rapide que de recalculer un dégradé par étoile. */
   private glow!: { warm: HTMLCanvasElement; gold: HTMLCanvasElement };
   /** Couleurs avec lesquelles les halos ont été dessinés (pour les refaire si elles changent). */
@@ -57,7 +57,7 @@ export class ClassicScene implements Scene {
   private size = { w: 0, h: 0, dpr: 0 };
 
   // Les valeurs de l'image en cours (pour ne pas les passer à chaque petite fonction).
-  private frame!: SceneFrame;
+  protected frame!: SceneFrame;
 
   constructor(options: { starfield?: boolean } = {}) {
     this.starfield = options.starfield ?? true;
@@ -115,7 +115,11 @@ export class ClassicScene implements Scene {
     else this.ctx.clearRect(0, 0, frame.camera.width, frame.camera.height);
     for (const o of this.graph.orbits) this.drawOrbit(o);
     this.drawScene();
+    this.afterScene();
   }
+
+  /** Après tout le reste (rien dans la scène classique) : une scène dérivée peut y ajouter un décor. */
+  protected afterScene(): void {}
 
   /** Suit la taille de la fenêtre et la densité de l'écran (net en haute densité). */
   private fitToScreen(w: number, h: number): void {
@@ -131,7 +135,7 @@ export class ClassicScene implements Scene {
     if (this.starfield) this.sky.resize(w, h, dpr); // le ciel est régénéré à la nouvelle taille
   }
 
-  private fade(depth: number): number {
+  protected fade(depth: number): number {
     return depthFade(depth, this.frame.camera, this.graph.outerRadius);
   }
 
@@ -207,7 +211,7 @@ export class ClassicScene implements Scene {
       const b = screen.get(e.target);
       if (!a?.visible || !b?.visible) continue;
       const lit = h !== null && (e.source === h || e.target === h);
-      items.push({ depth: (a.depth + b.depth) / 2, draw: () => this.drawEdge(a, b, lit, h !== null, e.target.ghost) });
+      items.push({ depth: (a.depth + b.depth) / 2, draw: () => this.drawEdge(e, a, b, lit, h !== null) });
     }
     for (const [n, p] of screen) {
       if (!p.visible) continue;
@@ -242,7 +246,9 @@ export class ClassicScene implements Scene {
     ctx.restore();
   }
 
-  private drawEdge(a: Projected, b: Projected, lit: boolean, anyHover: boolean, ghost: boolean): void {
+  /** Un lien entre deux étoiles (déjà projetées). Une scène dérivée peut le dessiner autrement. */
+  protected drawEdge(e: GraphEdge, a: Projected, b: Projected, lit: boolean, anyHover: boolean): void {
+    const ghost = e.target.ghost;
     const ctx = this.ctx;
     const palette = this.palette;
     const depthAlpha = this.fade((a.depth + b.depth) / 2);
@@ -259,7 +265,8 @@ export class ClassicScene implements Scene {
     ctx.setLineDash([]);
   }
 
-  private drawNode(n: GraphNode, p: Projected, dim: boolean, time: number): void {
+  /** Une étoile. Une scène dérivée peut la dessiner autrement. */
+  protected drawNode(n: GraphNode, p: Projected, dim: boolean, time: number): void {
     const ctx = this.ctx;
     const palette = this.palette;
     // Taille selon la profondeur (via `scale`), mais jamais plus petite qu'un point visible.

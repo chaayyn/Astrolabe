@@ -433,6 +433,9 @@ export class Engine {
 
     this.screen.clear();
     for (const n of this.graph.nodes) this.screen.set(n, this.camera.project(n.x, n.y, n.z));
+    // La scène peut déplacer ce que l'on voit (lentille du trou noir) : survol, clic et noms
+    // suivent alors les positions affichées.
+    this.scene.displace?.(this.screen, this.camera);
     const underMouse = this.findHovered();
     this.hoveringStar = underMouse !== null;
     this.canvas.style.cursor = underMouse ? "pointer" : "";

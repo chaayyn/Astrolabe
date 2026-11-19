@@ -31,6 +31,8 @@ export interface GraphNode {
   gold: boolean;
   /** Moment (ms, `performance.now()`) où l'étoile a été ajoutée/modifiée, pour le halo bref. */
   flashAt: number;
+  /** Nombre de sections (titres ## et ###) de la note ; 0 pour un fantôme. */
+  sections: number;
 }
 
 /** Une ligne entre deux étoiles. */
@@ -115,6 +117,7 @@ export class Graph {
       const node = old.get(note.path) ?? newNode(note.path, note.title, false);
       node.label = note.title;
       node.folder = note.folder;
+      node.sections = note.sections;
       if (changed.has(note.path)) node.flashAt = now;
       nodes.set(node.id, node);
     }
@@ -412,6 +415,7 @@ function newNode(id: string, label: string, ghost: boolean): GraphNode {
     radius: 3,
     gold: false,
     flashAt: 0,
+    sections: 0,
   };
 }
 
