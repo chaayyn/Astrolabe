@@ -48,7 +48,13 @@
   --sc-tracking-tight: -0.02em; /* titres et chiffres */
 
   /* Formes : coins droits, bordures fines, aucun flou ni halo pour l'interface. */
-  --sc-radius: 0px;
+  --sc-radius: 8px; /* coins adoucis des champs, boutons et lignes */
+  --sc-radius-lg: 14px; /* coins des fenêtres */
+  /* Verre dépoli (barre latérale, tiroirs, fenêtres, boutons) : couleur "r g b" du fond (sa
+     transparence et le flou viennent du réglage "Flou de l'interface"), filet et ombre. */
+  --sc-glass-rgb: 0 0 0;
+  --sc-glass-edge: rgba(255, 255, 255, 0.08);
+  --sc-glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   --sc-border-width: 1px;
   --sc-control: 30px; /* côté des petits boutons carrés */
 
@@ -61,7 +67,7 @@
   --sc-edge: 16px; /* marge avec les bords de la fenêtre */
 
   /* Barre latérale et tiroirs */
-  --sc-sidebar-width: 212px;
+  --sc-sidebar-width: 276px;
   --sc-drawer-width: 360px;
   --sc-drawer-wide: 520px; /* l'Accueil */
 

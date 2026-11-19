@@ -52,7 +52,13 @@
   --sc-tracking-tight: -0.02em; /* titres et chiffres */
 
   /* Formes : coins droits, bordures fines, aucun flou ni halo pour l'interface. */
-  --sc-radius: 0px;
+  --sc-radius: 8px; /* coins adoucis des champs, boutons et lignes */
+  --sc-radius-lg: 14px; /* coins des fenêtres */
+  /* Verre dépoli (barre latérale, tiroirs, fenêtres, boutons) : couleur "r g b" du fond (sa
+     transparence et le flou viennent du réglage "Flou de l'interface"), filet et ombre. */
+  --sc-glass-rgb: 0 0 0;
+  --sc-glass-edge: rgba(255, 255, 255, 0.08);
+  --sc-glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   --sc-border-width: 1px;
   --sc-control: 30px; /* côté des petits boutons carrés */
 
@@ -65,7 +71,7 @@
   --sc-edge: 16px; /* marge avec les bords de la fenêtre */
 
   /* Barre latérale et tiroirs */
-  --sc-sidebar-width: 212px;
+  --sc-sidebar-width: 276px;
   --sc-drawer-width: 360px;
   --sc-drawer-wide: 520px; /* l'Accueil */
 
@@ -286,6 +292,7 @@ html[data-input="pointer"] .icon-btn:focus-visible:not(:hover)::after {
 }
 
 /* ── Barre latérale ────────────────────────────────────────────────────────────────── */
+/* Son fond est en verre dépoli : voir la section "Matière" en fin de feuille. */
 
 #sidebar {
   position: fixed;
@@ -297,10 +304,9 @@ html[data-input="pointer"] .icon-btn:focus-visible:not(:hover)::after {
   flex-direction: column;
   box-sizing: border-box;
   width: var(--sc-sidebar-width);
-  padding: var(--sc-space-3) var(--sc-space-2) var(--sc-space-2);
+  padding: 22px 18px 16px;
   overflow-y: auto;
-  border-right: var(--sc-border-width) solid var(--sc-hairline);
-  background: var(--sc-surface);
+  scrollbar-width: none;
 }
 
 /* Repliée : elle disparaît ; le petit bouton carré en haut à gauche permet de la rouvrir. */
@@ -311,48 +317,38 @@ html[data-input="pointer"] .icon-btn:focus-visible:not(:hover)::after {
 .side-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: var(--sc-control);
-  margin-bottom: var(--sc-space-3);
-  padding-left: 6px;
+  gap: 12px;
+  min-height: 34px;
+  margin-bottom: 22px;
+  padding-left: 4px;
 }
 
-/* Le symbole de la marque : couleurs fixes, identiques dans tous les thèmes. */
+/* Le symbole de la marque : bien visible, couleurs fixes identiques dans tous les thèmes. */
 .app-logo {
   display: block;
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 30px;
+  height: 30px;
 }
 
 .app-name {
-  font-size: var(--sc-size-body);
+  font-size: 17px;
   font-weight: var(--sc-weight-bold);
-  letter-spacing: var(--sc-tracking-tight);
+  letter-spacing: -0.015em;
+  line-height: 1;
   white-space: nowrap;
-}
-
-/* Le minuscule repère coloré : un point qui s'allume quand le coffre change. */
-#sync {
-  width: 5px;
-  height: 5px;
-  background: var(--sc-text-faint);
-}
-
-#sync.pulse {
-  animation: sync-pulse 1.2s ease-out;
-}
-
-@keyframes sync-pulse {
-  0%,
-  40% {
-    background: var(--sc-accent);
-  }
 }
 
 .side-collapse {
   margin-left: auto;
   border-color: transparent;
+  background: transparent !important;
+  color: var(--sc-text-dim);
+}
+
+.side-collapse:hover {
+  color: var(--sc-text);
+  background: var(--sc-hover) !important;
 }
 
 #sidebar-open {
@@ -372,83 +368,128 @@ body:has(#sidebar.collapsed) .drawer-head {
   left: 0;
 }
 
-/* Le faux champ de recherche : contour 1 px, loupe, touche H à droite. */
+/* Le faux champ de recherche : contour fin, coins adoucis, loupe, touche H à droite. */
 .search-field {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  margin-bottom: var(--sc-space-3);
-  padding: 0 8px;
+  gap: 10px;
+  height: 40px;
+  margin-bottom: 22px;
+  padding: 0 10px 0 12px;
   border: var(--sc-border-width) solid var(--sc-border);
-  background: transparent;
-  color: var(--sc-text-faint);
+  border-radius: var(--sc-radius);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--sc-text-dim);
+  font-size: var(--sc-size-body);
   text-align: left;
+  transition: border-color var(--sc-fade), background var(--sc-fade);
 }
 
 .search-field:hover {
   border-color: var(--sc-border-strong);
+  background: var(--sc-hover);
 }
 
 .search-field svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: var(--sc-text-dim);
   stroke-width: 1.5;
+  stroke-linecap: round;
 }
 
 .search-placeholder {
   flex: 1;
 }
 
+/* La touche H : une petite touche de clavier, discrète. */
 .search-key {
-  color: var(--sc-text-dim);
+  min-width: 18px;
+  padding: 1px 5px;
+  border: var(--sc-border-width) solid var(--sc-border);
+  border-radius: 5px;
+  color: var(--sc-text-muted);
+  line-height: 1.4;
+  text-align: center;
 }
 
 #error {
   margin: 0 0 var(--sc-space-2);
-  padding: 8px;
+  padding: 8px 10px;
   border: var(--sc-border-width) solid var(--sc-border-strong);
+  border-radius: var(--sc-radius);
   color: var(--sc-text);
   font-size: var(--sc-size-label);
 }
 
-/* Navigation : des mots simples ; l'élément actif a un petit trait vertical à gauche. */
+.nav-list {
+  display: grid;
+  gap: 2px;
+}
+
+/* Navigation : icône fine + mot. Survol : fond très léger. Actif : trait doré + texte blanc. */
 .nav-item {
   position: relative;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  padding: 5px 6px 5px 12px;
+  height: 40px;
+  padding: 0 12px;
   border: 0;
+  border-radius: var(--sc-radius);
   background: none;
   color: var(--sc-text-muted);
+  font-size: 15px;
   text-align: left;
+  transition: background var(--sc-fade), color var(--sc-fade);
 }
 
-.nav-item:hover,
+.nav-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+
+.nav-item:hover {
+  background: var(--sc-hover);
+  color: var(--sc-text);
+}
+
 .nav-item[aria-current],
 .nav-item[aria-expanded="true"] {
   color: var(--sc-text);
 }
 
 .nav-item[aria-current] {
+  background: var(--sc-hover);
   font-weight: var(--sc-weight-bold);
+}
+
+.nav-item[aria-current] .nav-icon {
+  opacity: 1;
 }
 
 .nav-item[aria-current]::before {
   content: "";
   position: absolute;
-  top: 7px;
-  bottom: 7px;
+  top: 11px;
+  bottom: 11px;
   left: 0;
-  width: 2px;
+  width: 3px;
+  border-radius: 2px;
   background: var(--sc-accent);
 }
 
 .nav-count {
+  margin-left: auto;
   color: var(--sc-text-dim);
   font: var(--sc-size-label) var(--sc-font-mono);
 }
@@ -456,33 +497,58 @@ body:has(#sidebar.collapsed) .drawer-head {
 .nav-add {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: var(--sc-space-2);
-  padding: 5px 6px 5px 10px;
+  gap: 12px;
+  height: 40px;
+  margin-top: 10px;
+  padding: 0 12px;
   border: 0;
   background: none;
   color: var(--sc-text-faint);
+  font-size: 15px;
   cursor: not-allowed;
 }
 
-.nav-add svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
+.side-foot {
+  display: grid;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: var(--sc-border-width) solid var(--sc-hairline);
 }
 
-.side-foot {
-  margin-top: auto;
-  padding-top: var(--sc-space-3);
+/* Ligne d'état : un point qui s'allume quand le coffre change, "Synchronisé", la version. */
+.side-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 0;
+  color: var(--sc-text-faint);
+  font-size: var(--sc-size-label);
+}
+
+#sync {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sc-text-faint);
+}
+
+#sync.pulse {
+  animation: sync-pulse 1.2s ease-out;
+}
+
+@keyframes sync-pulse {
+  0%,
+  40% {
+    background: var(--sc-accent);
+    box-shadow: 0 0 0 3px var(--sc-accent-soft);
+  }
 }
 
 .app-version {
-  display: block;
-  padding: 6px 0 0 12px;
-  color: var(--sc-text-faint);
-  font: var(--sc-size-label) var(--sc-font-mono);
+  margin-left: auto;
+  font-family: var(--sc-font-mono);
 }
 
 /* ── Tiroirs ───────────────────────────────────────────────────────────────────────── */
@@ -663,6 +729,7 @@ button.line:hover {
   height: 40px;
   padding: 0 12px;
   border: var(--sc-border-width) solid var(--sc-border);
+  border-radius: var(--sc-radius);
 }
 
 .home-search:focus-within {
@@ -1142,5 +1209,67 @@ body.reduce-motion *::after {
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;
+  }
+}
+
+
+/* ── Matière : verre dépoli ────────────────────────────────────────────────────────── */
+/*
+ * Barre latérale, tiroirs, fenêtres, petits boutons et bande du bas partagent la même matière :
+ * un noir translucide qui laisse deviner la galaxie, flouté derrière (réglage "Flou de
+ * l'interface" : --ui-blur et --ui-glass-alpha, posés par settings.ts ; sans flou, le fond
+ * devient presque opaque pour rester lisible). Un filet clair très fin et une ombre douce.
+ */
+#sidebar,
+.drawer,
+.panel,
+.icon-btn,
+#keybar,
+#notice {
+  background: rgb(var(--sc-glass-rgb) / var(--ui-glass-alpha, 0.5));
+  -webkit-backdrop-filter: blur(var(--ui-blur, 18px)) saturate(120%);
+  backdrop-filter: blur(var(--ui-blur, 18px)) saturate(120%);
+}
+
+#sidebar,
+.drawer {
+  border-top: var(--sc-border-width) solid var(--sc-glass-edge);
+  border-right: var(--sc-border-width) solid var(--sc-glass-edge);
+  box-shadow: var(--sc-glass-shadow);
+}
+
+.panel {
+  border: var(--sc-border-width) solid var(--sc-glass-edge);
+  border-radius: var(--sc-radius-lg);
+  box-shadow: var(--sc-glass-shadow);
+}
+
+.icon-btn {
+  border-color: var(--sc-glass-edge);
+}
+
+#keybar {
+  bottom: 10px;
+  padding: 3px 14px;
+  border: var(--sc-border-width) solid var(--sc-glass-edge);
+  border-radius: 999px;
+}
+
+#notice {
+  border-color: var(--sc-glass-edge);
+  border-radius: var(--sc-radius);
+}
+
+/* Texte posé sur le verre : une ombre très légère garde le contraste devant une étoile claire. */
+#sidebar,
+.drawer {
+  text-shadow: 0 0 6px rgb(0 0 0 / 0.55);
+}
+
+/* Le système demande moins de transparence : fond opaque, aucun flou. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --ui-blur: 0px !important;
+    --ui-glass-alpha: 0.96 !important;
   }
 }
