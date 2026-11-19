@@ -20,7 +20,8 @@ export async function scanVault(vaultDir: string): Promise<VaultResult> {
     return { ok: true, notes: notes.sort((a, b) => a.path.localeCompare(b.path)) };
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
-    const error = code === "ENOENT" ? `Coffre introuvable : ${vaultDir}` : `Lecture du coffre impossible (${code ?? String(err)})`;
+    // Dossier absent, ou chemin qui n'est pas un dossier (ex. ASTROLABE_VAULT vers un fichier).
+    const error = code === "ENOENT" || code === "ENOTDIR" ? `Coffre introuvable : ${vaultDir}` : `Lecture du coffre impossible (${code ?? String(err)})`;
     return { ok: false, error };
   }
 }

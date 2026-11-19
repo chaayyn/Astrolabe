@@ -33,8 +33,12 @@ function migrateOldSettings(): void {
 // En dev, `npm run dev` fournit l'adresse du serveur Vite. En build, elle est absente.
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 
-// Dossier du coffre, relatif à la racine du projet (là où est package.json).
-const VAULT_DIR = path.resolve(app.getAppPath(), "./vault");
+// Dossier du coffre : `vault/` à la racine du projet (là où est package.json), ou celui que
+// donne la variable d'environnement ASTROLABE_VAULT (chemin absolu, ou relatif au dossier
+// d'où l'app est lancée). S'il n'existe pas, l'app affiche simplement "Coffre introuvable".
+const VAULT_DIR = process.env.ASTROLABE_VAULT
+  ? path.resolve(process.env.ASTROLABE_VAULT)
+  : path.resolve(app.getAppPath(), "./vault");
 // Dossier des thèmes, à côté du coffre (jamais dedans).
 const THEMES_DIR = path.resolve(app.getAppPath(), "./themes");
 // Icône de la fenêtre (barre des tâches, Alt-Tab) : PNG fabriqué par `npm run icons`.
