@@ -1,20 +1,37 @@
 // Scène "galaxie" : un ciel profond et un trou noir calculés par la carte graphique (WebGL2,
-// sky.ts puis accretion.ts, dans le même canvas), et par-dessus TOUT le dessin de la scène
-// "classique" (anneaux des dossiers, liens, étoiles des notes, effets de survol), réutilisé
-// tel quel : on emploie une ClassicScene à qui l'on demande de ne pas peindre son fond étoilé
-// ni son trou noir 2D, mais d'effacer ce qui passe DERRIÈRE l'ombre du trou noir.
+// sky.ts puis accretion.ts, dans le même canvas), et par-dessus les étoiles et liens des notes
+// (stars.ts) : le dessin de la scène "classique" (anneaux et noms des dossiers, ordre de
+// dessin, survol) réutilisé tel quel, avec des étoiles, liens, orbes de sections et comètes
+// au style "galaxie", déviés par la lentille du trou noir (lens.ts). Ni fond étoilé ni trou
+// noir 2D : on y efface ce qui passe DERRIÈRE l'ombre du trou noir.
 //
 //   calque #scene ─┬─ canvas WebGL2 : ciel (nébuleuse, étoiles, météores), puis trou noir
-//                  └─ canvas 2D transparent : la scène classique, sans fond ni trou noir 2D
+//                  └─ canvas 2D transparent : étoiles et liens des notes (stars.ts)
 //
 // Replis : WebGL2 absent → le moteur choisit "classique". Shader du trou noir refusé → ciel
 // WebGL gardé, trou noir 2D de la scène classique. Carte graphique reprise en cours de route →
 // fond et trou noir 2D classiques le temps qu'elle revienne.
+import type { Camera, Projected } from "../../camera";
+import type { GraphNode } from "../../graph";
 import type { ParamDef, ParamValues } from "../../params";
-import { ClassicScene, STAR_PARAMS } from "../classic/classic-scene";
 import type { Palette, Scene, SceneFrame, SceneGraph } from "../scene";
 import { Accretion, shadowRadius, type HoleOptions } from "./accretion";
+import { Lens } from "./lens";
 import { Sky } from "./sky";
+import { GalaxieStars } from "./stars";
+
+/** Réglages des étoiles et des liens (groupe "Étoiles et liens"). Défauts = le rendu prévu. */
+const STAR_PARAMS: readonly ParamDef[] = [
+  { id: "stars.glow", label: "Intensité du halo des étoiles", group: "Étoiles et liens", type: "slider", min: 0, max: 2, step: 0.05, unit: "×", default: 1 },
+  { id: "stars.size", label: "Taille des étoiles", group: "Étoiles et liens", type: "slider", min: 0.5, max: 2, step: 0.05, unit: "×", default: 1 },
+  { id: "stars.links", label: "Luminosité des liens", group: "Étoiles et liens", type: "slider", min: 0, max: 3, step: 0.05, unit: "×", default: 1 },
+  { id: "stars.lens", label: "Déviation par la lentille", group: "Étoiles et liens", type: "slider", min: 0, max: 2, step: 0.05, unit: "×", default: 1 },
+  { id: "links.lights", label: "Lumières sur les liens", group: "Étoiles et liens", type: "toggle", default: true },
+  { id: "links.lightSpeed", label: "Vitesse des lumières", group: "Étoiles et liens", type: "slider", min: 0.2, max: 3, step: 0.1, unit: "×", default: 1 },
+  { id: "stars.orbs", label: "Orbes des sections", group: "Étoiles et liens", type: "toggle", default: true },
+  { id: "comets.on", label: "Comètes", group: "Étoiles et liens", type: "toggle", default: true },
+  { id: "comets.rate", label: "Fréquence des comètes", group: "Étoiles et liens", type: "slider", min: 0.2, max: 3, step: 0.1, unit: "×", default: 1 },
+];
 
 /** Réglages du ciel (groupe "Ciel"). Défauts = le rendu prévu. */
 const SKY_PARAMS: readonly ParamDef[] = [
@@ -53,7 +70,9 @@ export class GalaxieScene implements Scene {
   readonly params: readonly ParamDef[] = [...STAR_PARAMS, ...SKY_PARAMS, ...HOLE_PARAMS];
   private sky: Sky | null = null;
   private hole: Accretion | null = null;
-  private classic = new ClassicScene({ starfield: false });
+  private classic = new GalaxieStars({ starfield: false });
+  /** Lentille du trou noir : dévie les étoiles et les liens qui passent derrière lui. */
+  private lens = new Lens();
   private palette!: Palette;
   private holeOptions: HoleOptions = { brightness: 1, lens: 1, spin: 1, halo: 1, tilt: 8, quality: "medium" };
   private reduceMotion = false;
@@ -93,7 +112,25 @@ export class GalaxieScene implements Scene {
     };
     this.reduceMotion = values["motion.reduce"] === true;
     this.hole?.setOptions(this.holeOptions, this.reduceMotion || systemReducedMotion.matches);
+    this.lens.setStrength(num("stars.lens", 1));
+    this.classic.setStyle({
+      lights: values["links.lights"] !== false,
+      lightSpeed: num("links.lightSpeed", 1),
+      orbs: values["stars.orbs"] !== false,
+      comets: values["comets.on"] !== false,
+      cometRate: num("comets.rate", 1),
+      reduceMotion: this.reduceMotion || systemReducedMotion.matches,
+    });
     this.syncMask();
+  }
+
+  /**
+   * Avant le dessin : la lentille dévie les étoiles qui passent derrière le trou noir. Le moteur
+   * utilise ensuite ces positions affichées pour le survol, le clic et les noms des notes.
+   */
+  displace(screen: Map<GraphNode, Projected>, camera: Camera): void {
+    this.lens.update(camera);
+    this.classic.displaceStars(screen);
   }
 
   update(graph: SceneGraph): void {
@@ -135,8 +172,12 @@ export class GalaxieScene implements Scene {
     }
   }
 
-  /** Trou noir WebGL actif : la scène classique efface ce qui passe derrière son ombre ; sinon elle le dessine. */
+  /**
+   * Trou noir WebGL actif : on efface ce qui passe derrière son ombre et la lentille dévie les
+   * étoiles. Sinon (trou noir 2D de repli) : ni masque ni déviation.
+   */
   private syncMask(): void {
     this.classic.setHoleMask(this.hole ? shadowRadius(this.holeOptions.lens) : null);
+    this.classic.setLens(this.hole ? this.lens : null);
   }
 }
