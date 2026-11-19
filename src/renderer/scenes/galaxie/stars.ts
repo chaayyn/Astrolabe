@@ -1,4 +1,4 @@
-// Adapté de second-brain-black-hole (MIT, © williamwasen) — voir THIRD_PARTY_LICENSES.md
+// Adapté de second-brain-black-hole (MIT, © williamwasen) — voir docs/third-party-notices.md
 //
 // Les étoiles des notes et leurs liens, dans le style de la scène "galaxie" :
 //   - étoiles : disque net, halo doux, petite pointe de diffraction pour les plus connectées,

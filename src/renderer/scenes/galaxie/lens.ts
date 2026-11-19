@@ -1,4 +1,4 @@
-// Adapté de second-brain-black-hole (MIT, © williamwasen) — voir THIRD_PARTY_LICENSES.md
+// Adapté de second-brain-black-hole (MIT, © williamwasen) — voir docs/third-party-notices.md
 //
 // Déviation des étoiles des notes par la LENTILLE du trou noir (approximation visuelle).
 //

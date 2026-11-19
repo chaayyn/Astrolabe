@@ -54,4 +54,4 @@ Pour créer un thème, voir [`themes/README.md`](themes/README.md).
 La scène « galaxie » (ciel et trou noir) est adaptée du projet
 [second-brain-black-hole](https://github.com/williamwasen/second-brain-black-hole) de
 williamwasen, sous licence MIT. Détails et texte de la licence :
-[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
+[`docs/third-party-notices.md`](docs/third-party-notices.md).

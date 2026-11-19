@@ -88,6 +88,6 @@ of `--sc-*` variables; it can also pick the scene that draws the graph. See
 - The sky and black hole shaders, the lensing model and the star and link style of the galaxy
   scene are adapted from
   [second-brain-black-hole](https://github.com/williamwasen/second-brain-black-hole)
-  (MIT, © williamwasen). See [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
+  (MIT, © williamwasen). See [`docs/third-party-notices.md`](docs/third-party-notices.md).
 - Astrolabe is an independent project and is not affiliated with or endorsed by Obsidian.
 - License: not chosen yet.
