@@ -2,6 +2,7 @@
 import { app, BrowserWindow, ipcMain, Menu, type Input } from "electron";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { readCaptureRequest, runCapture } from "./capture";
 import { getActiveTheme, getThemeSettings, loadThemes, setActiveTheme, setThemeSettings } from "./themes";
 import { scanVault } from "./vault";
 import { watchVault } from "./watcher";
@@ -44,10 +45,15 @@ const THEMES_DIR = path.resolve(app.getAppPath(), "./themes");
 // Icône de la fenêtre (barre des tâches, Alt-Tab) : PNG fabriqué par `npm run icons`.
 const WINDOW_ICON = path.resolve(app.getAppPath(), "./assets/brand/png/icon-512.png");
 
+// Mode capture (npm run capture) : photographier la fenêtre puis quitter. `null` sinon.
+const capture = readCaptureRequest();
+
 function createWindow(): void {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: capture?.width ?? 1200,
+    height: capture?.height ?? 800,
+    useContentSize: capture !== null, // en capture : la taille demandée est celle de l'image
+    show: capture === null, // en capture, rien ne s'affiche à l'écran (rendu hors écran)
     backgroundColor: "#000000", // évite un flash blanc avant le chargement de la page
     title: "Astrolabe",
     icon: WINDOW_ICON,
@@ -56,8 +62,11 @@ function createWindow(): void {
       contextIsolation: true, // la page et le preload ne partagent pas le même JS
       nodeIntegration: false, // la page n'a pas accès à Node (fichiers, processus...)
       sandbox: true, // le preload tourne lui aussi dans un environnement restreint
+      offscreen: capture !== null, // capture : image exacte, sans dépendre du gestionnaire de fenêtres
     },
   });
+
+  if (capture) void runCapture(win, capture);
 
   // Sans barre de menus, ses raccourcis utiles sont repris ici (voir handleWindowKeys).
   win.webContents.on("before-input-event", (event, input) => {
