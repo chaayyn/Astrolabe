@@ -149,9 +149,9 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     // Effet Doppler discret : le côté qui vient vers nous est un peu plus brillant.
     vec3 velocity = normalize(cross(uNormal, p)) * sqrt(.5 / max(r - 1., 1.));
     float doppler = clamp(1. / (1. + dot(velocity, direction)), .7, 1.45);
-    float heat = clamp(1.15 - (r - 3.) * .09, 0., 1.);
+    float heat = clamp(1.15 - (r - 3.) * .15, 0., 1.);
     vec3 tint = mix(uDeep, uMid, heat);
-    tint = mix(tint, uHot, smoothstep(.55, 1., heat) * .85);
+    tint = mix(tint, uHot, smoothstep(.55, 1., heat) * .45);
     return tint * (3. * falloff * energy * window * pow(doppler, 1.6)) * uBright;
   }
 
@@ -271,7 +271,9 @@ const blurFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   uniform sampler2D uInput; uniform vec2 uDirection; uniform bool uExtract;
   vec3 value(vec2 uv) {
     vec3 c = texture(uInput, uv).rgb${hdr ? "" : " * 16."};
-    if (uExtract) c = max(c - vec3(1.4), vec3(0)); // seules les zones les plus claires débordent
+    // Seules les zones les plus claires débordent. Seuil sur la composante la plus forte, en
+    // gardant la teinte (correctif 20quater : soustraire le seuil à chaque composante virait au gris).
+    if (uExtract) { float m = max(c.r, max(c.g, c.b)); c *= max(m - 1.6, 0.) / max(m, .0001); }
     return c;
   }
   void main() {
@@ -287,26 +289,33 @@ const blurFragment = (hdr: boolean) => /* glsl */ `#version 300 es
  * Correctif 20quater : la lumière du disque et du halo S'AJOUTE au ciel, et seule l'opacité
  * (ombre, disque) le masque. Avant, la lumière était divisée par l'opacité puis saturée :
  * toute zone faiblement opaque prenait une teinte beige uniforme (plaque devant l'ombre,
- * coquilles grises du halo).
+ * coquilles grises du halo). Le mappage des tons garde aussi la teinte (blanc seulement au
+ * cœur le plus chaud, plus de côté brûlé en blanc).
  */
 const compositeFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   precision highp float;
   in vec2 vUV; out vec4 color;
   uniform sampler2D uScene, uBloom, uWide;
   uniform float uHalo;
+  const float EXPOSURE = .45;
   void main() {
     vec4 scene = texture(uScene, vUV);
     float decode = ${hdr ? "1." : "16."};
     vec3 base = scene.rgb * decode;
     // Halo qui suit la forme du disque : surtout le flou proche, peu de flou large (pas de boule ronde).
-    vec3 bloom = (texture(uBloom, vUV).rgb * .5 + texture(uWide, vUV).rgb * .16) * decode * uHalo;
+    vec3 bloom = (texture(uBloom, vUV).rgb * .3 + texture(uWide, vUV).rgb * .12) * decode * uHalo;
     // L'ombre (opaque et sombre) reste noire : le halo n'y entre pas (correctif 20quater : le
     // reste de halo flou à basse résolution y dessinait des taches en courbes de niveau).
     float shade = scene.a * (1. - clamp(max(base.r, max(base.g, base.b)) * 4., 0., 1.));
     bloom *= 1. - shade;
-    vec3 light = (base + bloom) * .5;
-    if (max(light.r, max(light.g, light.b)) < .0001 && scene.a < .0001) { color = vec4(0); return; }
-    color = vec4(pow(1. - exp(-light), vec3(1. / 2.2)), scene.a);
+    vec3 light = (base + bloom) * EXPOSURE;
+    float peak = max(light.r, max(light.g, light.b));
+    if (peak < .0001 && scene.a < .0001) { color = vec4(0); return; }
+    // Courbe douce appliquée à la composante la plus forte, même facteur pour les trois : la
+    // teinte reste (dorée) ; 15 % de courbe par composante blanchit un peu le cœur le plus chaud.
+    vec3 hue = light * ((1. - exp(-peak)) / max(peak, .0001));
+    vec3 mapped = pow(mix(hue, 1. - exp(-light), .15), vec3(1. / 2.2));
+    color = vec4(mapped, scene.a);
   }
 `;
 
@@ -458,6 +467,10 @@ export class Accretion {
       [0, 1, 1, 0, true],
       [1, 2, 0, 1, false],
       [2, 3, 1, 0, false],
+      [3, 4, 0, 1, false],
+      // Correctif 20quater : un second flou du halo large, pour qu'agrandi il reste lisse (sans
+      // coquilles en escalier).
+      [4, 3, 1, 0, false],
       [3, 4, 0, 1, false],
     ] as const) {
       this.bindTarget(this.targets[to]);
