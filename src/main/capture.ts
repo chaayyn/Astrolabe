@@ -17,6 +17,8 @@ export interface CaptureRequest {
   height: number;
   wait: number; // attente avant la capture (ms), le temps que la disposition se stabilise
   state: "graph" | "home" | "settings"; // graphe seul, Accueil ouvert, ou Paramètres ouverts
+  /** `true` : reprendre les réglages réels de l'utilisateur ; sinon réglages par défaut (dossier temporaire). */
+  mySettings?: boolean;
 }
 
 /** Lit la demande de capture, ou `null` s'il n'y en a pas. Quitte si elle est invalide. */

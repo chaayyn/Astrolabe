@@ -1,6 +1,7 @@
 // Process principal d'Electron : c'est le "programme" Node qui ouvre la fenêtre.
 import { app, BrowserWindow, ipcMain, Menu, type Input } from "electron";
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { readCaptureRequest, runCapture } from "./capture";
 import { getActiveTheme, getThemeSettings, loadThemes, setActiveTheme, setThemeSettings } from "./themes";
@@ -11,7 +12,18 @@ import { watchVault } from "./watcher";
 // Fixé AVANT le démarrage, sinon Electron utiliserait un autre dossier.
 app.setName("Astrolabe");
 app.setPath("userData", path.join(app.getPath("appData"), "astrolabe"));
-migrateOldSettings();
+
+// Mode capture (npm run capture) : photographier la fenêtre puis quitter. `null` sinon.
+// Par défaut, la capture part d'un dossier de données vide et temporaire : réglages par défaut
+// du thème, jamais ceux de l'utilisateur (images reproductibles). `--my-settings` les reprend.
+const capture = readCaptureRequest();
+if (capture && !capture.mySettings) {
+  const temp = mkdtempSync(path.join(os.tmpdir(), "astrolabe-capture-"));
+  app.setPath("userData", temp);
+  app.on("will-quit", () => rmSync(temp, { recursive: true, force: true }));
+} else {
+  migrateOldSettings();
+}
 
 /**
  * L'app s'appelait "Second Cerveau" : ses réglages (thème choisi, couleurs, curseurs) étaient
@@ -44,9 +56,6 @@ const VAULT_DIR = process.env.ASTROLABE_VAULT
 const THEMES_DIR = path.resolve(app.getAppPath(), "./themes");
 // Icône de la fenêtre (barre des tâches, Alt-Tab) : PNG fabriqué par `npm run icons`.
 const WINDOW_ICON = path.resolve(app.getAppPath(), "./assets/brand/png/icon-512.png");
-
-// Mode capture (npm run capture) : photographier la fenêtre puis quitter. `null` sinon.
-const capture = readCaptureRequest();
 
 function createWindow(): void {
   const win = new BrowserWindow({
