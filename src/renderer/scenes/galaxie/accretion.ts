@@ -48,12 +48,26 @@ const QUALITY = {
   high: { steps: 176, scale: 1 },
 } as const;
 
+/** Rayon de capture de l'intégrateur (en Rs) : un rayon qui passe en dessous tombe dans l'horizon. */
+const CAPTURE = 1.015;
+
+/**
+ * Paramètre d'impact critique (en Rs) : les rayons qui visent le trou noir plus près que lui y
+ * tombent, ce qui dessine l'ombre. L'accélération de l'intégrateur (× force de la lentille L)
+ * place la sphère de photons à 1,5 L et ce bord à 2,598 L ; si cette sphère est plus petite que
+ * le rayon de capture (L < 0,677), c'est le rayon de capture qui décide.
+ */
+export function shadowImpact(lens: number): number {
+  const l = Math.max(0, lens);
+  return l >= CAPTURE / 1.5 ? 2.598076211 * l : CAPTURE / Math.sqrt(1 - l / CAPTURE);
+}
+
 /**
  * Rayon (unités du monde) de la zone où le trou noir paraît noir, selon la force de la
  * lentille : c'est là que la scène classique efface ce qui passe DERRIÈRE lui.
  */
 export function shadowRadius(lens: number): number {
-  return Math.max(1.015, 2.598 * Math.sqrt(Math.max(0, lens))) * RS;
+  return shadowImpact(lens) * RS;
 }
 
 const FULLSCREEN_VERTEX = /* glsl */ `#version 300 es
@@ -84,6 +98,7 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   uniform vec3 uOrigin;   // caméra, relative au trou noir, en Rs (repère de la caméra)
   uniform vec3 uNormal, uBasis; // axe du disque et direction de référence (repère de la caméra)
   uniform float uTime, uSeed, uLens, uBright, uStepScale;
+  uniform float uShadowB; // paramètre d'impact critique (bord de l'ombre), en Rs
   uniform int uSteps;
   uniform vec3 uHot, uMid, uDeep; // couleurs du disque : blanc chaud, doré, profond
   out vec4 color;
@@ -143,6 +158,12 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     bool inside = dot(origin, origin) < 26. * 26.;
     if (b > 21. || (!inside && closest < 0.)) discard;
     float coverage = 1. - smoothstep(17.5, 21., b);
+    // Taille d'un pixel de la cible au niveau du trou noir (en Rs).
+    float pixel = length(origin) / uFocal;
+    // Bord de l'ombre analytique et lissé sur un pixel (correctif 20quater) : 0 dans l'ombre,
+    // 1 dehors. Décider "capturé ou non" pixel par pixel donnait un bord en pointillés, car
+    // près du bord les pas de l'intégrateur sont trop gros pour trancher de façon régulière.
+    float edge = smoothstep(uShadowB - pixel, uShadowB + pixel, b);
     vec3 p, velocity;
     if (inside) {
       p = origin; velocity = incoming; // caméra très proche : le rayon part d'ici
@@ -153,11 +174,17 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
       float vr = dot(incoming, radial);
       velocity = incoming - radial * vr - radial * sqrt(max(.0001, vr * vr + b2 / (26. * 26. * 26.)));
     }
-    vec3 emission = vec3(0); float transmission = 1.; bool captured = false;
+    // Deux bilans : tout le trajet, et seulement ce qui est devant le trou noir (côté caméra).
+    // Un rayon qui vise l'ombre ne voit que le disque devant : ce qu'il ramasse derrière est une
+    // erreur de l'intégrateur (rayon proche du bord qui s'échappe à tort ou tourne autour, puis
+    // repasse devant). On garde donc ce qui est devant le trou noir ET au premier passage
+    // (distance parcourue à peine plus grande que celle de la caméra au trou noir). Les deux
+    // tris sont progressifs, pour que leurs limites restent lisses d'un pixel à l'autre.
+    vec3 emission = vec3(0), emissionIn = vec3(0); float transmission = 1.;
     for (int i = 0; i < 176; i++) {
       if (i >= uSteps) break;
       float r = length(p);
-      if (r < 1.015) { captured = true; break; }
+      if (r < 1.015) break;
       if (r > 26.5 && dot(p, velocity) > 0.) break;
       float ds = clamp(r * .105, .055, 1.6) * uStepScale;
       vec3 a = acceleration(p, b2);
@@ -180,22 +207,28 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
         // très fin : on plafonne le renforcement de profil, pour que les arcs lentillés (qui voient
         // le disque de face) soient aussi lumineux que le disque vu par la tranche.
         float optical = min(column, 4.5) * .26;
-        emission += transmission * light * optical;
+        vec3 gained = transmission * light * optical;
+        emission += gained;
+        emissionIn += gained * clamp(.5 - dot(sampleP, incoming), 0., 1.);
         transmission *= exp(-density * optical * .65);
       }
       p = next; velocity = nextV;
     }
-    // Anneau de photons : les rayons qui frôlent l'horizon sans y tomber sont déviés de plus
-    // d'un demi-tour ; ils forment un anneau fin et brillant collé à l'ombre, et un second,
-    // plus fin et plus faible, pour ceux qui en font un tour complet (approximation visuelle).
-    if (!captured) {
-      float bend = acos(clamp(dot(normalize(velocity), incoming), -1., 1.));
-      float ring = smoothstep(2.3, 3.1, bend) * .9 + smoothstep(5., 6.2, bend) * .6;
-      emission += uHot * ring * 1.7 * uBright;
-    }
-    // Ombre : noire et opaque. Ailleurs : la lumière du disque, et le ciel visible à travers.
-    float alpha = captured ? 1. : 1. - transmission;
-    color = vec4(emission * coverage * STORE, alpha * coverage);
+    // Anneau de photons : les rayons qui frôlent le bord de l'ombre font un demi-tour (anneau
+    // fin et brillant collé à l'ombre) ou un tour complet (second anneau, plus fin et plus
+    // faible). Correctif 20quater : position calculée à partir de l'écart relatif au bord
+    // (d = b / bord - 1 ; déviation ≈ -ln d), plus de la direction finale du rayon, qui était
+    // bruitée près du bord. Chaque anneau garde au moins un pixel de large, sinon il
+    // s'allumait par endroits seulement ; sa luminosité baisse un peu quand il s'élargit.
+    float d = max(b / uShadowB - 1., 0.), dp = pixel / uShadowB;
+    float ring = (1. - smoothstep(.022, .067 + dp, d)) * .9 * sqrt(.067 / (.067 + dp))
+               + (1. - smoothstep(.0012, .0045 + dp, d)) * .6 * sqrt(.0045 / (.0045 + dp));
+    ring *= edge * smoothstep(.45, .75, uLens); // pas de sphère de photons sans lentille
+    // Dans l'ombre, seul ce que le rayon a croisé à l'aller (le disque devant) ; ailleurs, tout.
+    vec3 light = mix(emissionIn, emission, edge) + uHot * ring * 1.7 * uBright;
+    // Ombre : noire et opaque. Ailleurs : le disque absorbe un peu, le ciel reste visible.
+    float alpha = mix(1., 1. - transmission, edge);
+    color = vec4(light * coverage * STORE, alpha * coverage);
   }
 `;
 
@@ -369,6 +402,7 @@ export class Accretion {
     gl.uniform1f(r.uniform("uTime"), this.diskTime % 10000);
     gl.uniform1f(r.uniform("uSeed"), 1.73);
     gl.uniform1f(r.uniform("uLens"), o.lens);
+    gl.uniform1f(r.uniform("uShadowB"), shadowImpact(o.lens));
     // Pulsation discrète de la luminosité (aucune en mouvement réduit).
     const pulse = this.reduceMotion ? 1 : 1 + 0.05 * Math.sin(seconds * 1.1);
     gl.uniform1f(r.uniform("uBright"), o.brightness * pulse);
