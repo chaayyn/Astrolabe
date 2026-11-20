@@ -12,6 +12,9 @@
 //   --my-settings  reprendre VOS réglages (thème, couleurs, curseurs). Sans cette option, l'app
 //                  part d'un profil vide et temporaire : les réglages PAR DÉFAUT du thème, sans
 //                  compteur FPS ; les images sont donc reproductibles (README, image de partage).
+//   --set    réglage=valeur, répétable, dans le profil temporaire seulement (jamais vos réglages),
+//            par exemple --set hole.quality=high --set hole.brightness=2 ; theme=ambre change
+//            de thème. Nombres, true/false ou texte.
 //
 // `npm run capture` compile d'abord l'app, puis lance la version compilée (dist/) dans un mode
 // spécial (src/main/capture.ts) : la fenêtre est rendue HORS ÉCRAN (rien n'apparaît, le WebGL
@@ -52,7 +55,17 @@ const out = path.resolve(option("out", path.join(ROOT, ".local-review", "capture
 const mySettings = args.includes("--my-settings");
 const zoom = Number(option("zoom", "0"));
 if (!Number.isInteger(zoom) || zoom < 0 || zoom > 40) fail("--zoom doit être un nombre entier de 0 à 40");
-const request = { out, width: Number(size[1]), height: Number(size[2]), wait, state, mySettings, zoom };
+// Réglages imposés (--set clé=valeur), écrits dans le profil temporaire.
+const params = {};
+args.forEach((arg, i) => {
+  if (arg !== "--set") return;
+  const m = /^([\w.]+)=(.*)$/.exec(args[i + 1] ?? "");
+  if (!m) fail("--set doit ressembler à hole.quality=high");
+  const raw = m[2];
+  params[m[1]] = raw === "true" ? true : raw === "false" ? false : raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : raw;
+});
+if (mySettings && Object.keys(params).length) fail("--set ne se combine pas avec --my-settings (vos réglages ne sont jamais modifiés)");
+const request = { out, width: Number(size[1]), height: Number(size[2]), wait, state, mySettings, zoom, params };
 console.log(`capture : ${state}, ${size[1]}x${size[2]}, ${mySettings ? "vos réglages" : "réglages par défaut (profil temporaire)"}`);
 const env = { ...process.env, ASTROLABE_CAPTURE: JSON.stringify(request) };
 delete env.VITE_DEV_SERVER_URL; // toujours la version compilée, sans serveur de développement

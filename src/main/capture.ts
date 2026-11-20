@@ -21,6 +21,8 @@ export interface CaptureRequest {
   mySettings?: boolean;
   /** Nombre de crans de zoom avant (touche +) avant la photo : gros plan sur le trou noir. */
   zoom?: number;
+  /** Réglages imposés dans le profil temporaire (`theme` = thème choisi, le reste = curseurs). */
+  params?: Record<string, number | boolean | string>;
 }
 
 /** Lit la demande de capture, ou `null` s'il n'y en a pas. Quitte si elle est invalide. */
@@ -42,6 +44,18 @@ export function readCaptureRequest(): CaptureRequest | null {
     app.exit(2);
     return null;
   }
+}
+
+/**
+ * Profil temporaire : écrit les réglages imposés (`--set`) dans son fichier de réglages, au
+ * format 1 de themes.ts. Jamais appelé avec les réglages de l'utilisateur.
+ */
+export function seedCaptureSettings(folder: string, params: CaptureRequest["params"]): void {
+  if (!params || Object.keys(params).length === 0) return;
+  const { theme, ...values } = params;
+  const id = typeof theme === "string" ? theme : "galaxie";
+  const settings = { version: 1, theme: id, themes: { [id]: { params: values, colors: {} } } };
+  writeFileSync(path.join(folder, "settings.json"), JSON.stringify(settings, null, 2), "utf8");
 }
 
 /** Attend, met la fenêtre dans l'état demandé, la photographie, écrit le PNG et quitte. */

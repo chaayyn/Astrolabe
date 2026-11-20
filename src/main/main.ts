@@ -3,7 +3,7 @@ import { app, BrowserWindow, ipcMain, Menu, type Input } from "electron";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { readCaptureRequest, runCapture } from "./capture";
+import { readCaptureRequest, runCapture, seedCaptureSettings } from "./capture";
 import { getActiveTheme, getThemeSettings, loadThemes, setActiveTheme, setThemeSettings } from "./themes";
 import { scanVault } from "./vault";
 import { watchVault } from "./watcher";
@@ -20,6 +20,7 @@ const capture = readCaptureRequest();
 if (capture && !capture.mySettings) {
   const temp = mkdtempSync(path.join(os.tmpdir(), "astrolabe-capture-"));
   app.setPath("userData", temp);
+  seedCaptureSettings(temp, capture.params);
   app.on("will-quit", () => rmSync(temp, { recursive: true, force: true }));
 } else {
   migrateOldSettings();
