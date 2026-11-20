@@ -115,7 +115,8 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   // Lumière émise par le disque au point p (densité renvoyée à part).
   // Calibrage (étape 20ter) : disque fin et étendu, lisse, parcouru de fines stries concentriques
   // (au lieu de nuages), cœur blanc chaud au bord intérieur, or vers l'extérieur.
-  vec3 plasma(vec3 p, vec3 direction, out float density) {
+  // footprint : largeur d'un pixel posée sur le disque (en Rs), pour filtrer les stries.
+  vec3 plasma(vec3 p, vec3 direction, float footprint, out float density) {
     vec3 tangent = normalize(cross(uNormal, uBasis));
     float x = dot(p, uBasis), y = dot(p, tangent), r = length(vec2(x, y));
     float window = smoothstep(2.6, 3.1, r) * (1. - smoothstep(10.5, 17., r));
@@ -125,8 +126,14 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     float omega = .31 * pow(3.4 / r, 1.5);
     float phase = a - uTime * omega + uSeed;
     // Stries fines le long du disque (fréquence surtout radiale), et un léger grain lent.
-    float s1 = noise(vec3(r * 7.5, cos(phase) * 1.2, sin(phase) * 1.2));
-    float s2 = noise(vec3(r * 19., cos(phase) * 2.4 + 3., sin(phase) * 2.4));
+    // Correctif 20quater : une strie plus fine que le pixel (disque vu de biais, de loin) ne
+    // peut pas être dessinée ; échantillonnée quand même, elle créait un moiré de lignes
+    // parallèles. Chaque famille de stries s'efface donc vers sa valeur moyenne (.5) dès que sa
+    // période approche la taille du pixel.
+    float f1 = smoothstep(.25, .6, footprint * 7.5);
+    float f2 = smoothstep(.25, .6, footprint * 19.);
+    float s1 = mix(noise(vec3(r * 7.5, cos(phase) * 1.2, sin(phase) * 1.2)), .5, f1);
+    float s2 = mix(noise(vec3(r * 19., cos(phase) * 2.4 + 3., sin(phase) * 2.4)), .5, f2);
     float streaks = .62 + .26 * s1 + .12 * s2;
     float clumps = .85 + .15 * noise(vec3(cos(phase) * 3., sin(phase) * 3., r * .8 + uTime * .05));
     float energy = streaks * clumps;
@@ -181,6 +188,12 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     // (distance parcourue à peine plus grande que celle de la caméra au trou noir). Les deux
     // tris sont progressifs, pour que leurs limites restent lisses d'un pixel à l'autre.
     vec3 emission = vec3(0), emissionIn = vec3(0); float transmission = 1.;
+    float traveled = length(p - origin);
+    // Les images secondaires du disque (rayons passés derrière le trou noir) sont comprimées par
+    // la lentille, d'autant plus que le rayon frôle le bord de l'ombre : leurs stries sont plus
+    // fines à l'écran, on les filtre donc davantage.
+    float squeeze = 1. + .5 / max(b / uShadowB - 1., .02);
+    float crossings = 0.;
     for (int i = 0; i < 176; i++) {
       if (i >= uSteps) break;
       float r = length(p);
@@ -191,13 +204,21 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
       vec3 next = p + velocity * ds + .5 * a * ds * ds;
       vec3 nextV = velocity + .5 * (a + acceleration(next, b2)) * ds;
       float h0 = dot(p, uNormal), h1 = dot(next, uNormal);
-      float across = clamp(h0 / (abs(h0 - h1) < .00001 ? .00001 : h0 - h1), 0., 1.);
+      // Point d'échantillonnage : la traversée du plan si le pas le traverse, sinon le milieu du
+      // pas (correctif 20quater : prendre une extrémité faisait des bandes horizontales sur le
+      // disque vu de biais, au rythme des pas).
+      float across = h0 * h1 < 0. ? h0 / (h0 - h1) : .5;
       vec3 sampleP = mix(p, next, across);
       float diskR = length(sampleP - uNormal * dot(sampleP, uNormal));
       float thickness = .02 + .004 * diskR; // disque fin : une lame lumineuse (calibrage 20ter)
       if (min(abs(h0), abs(h1)) < thickness * 3. || h0 * h1 < 0.) {
         float density;
-        vec3 light = plasma(sampleP, normalize(velocity), density);
+        // Largeur du pixel sur le disque : grandit avec la distance parcourue et quand on voit
+        // le disque par la tranche.
+        vec3 dir = normalize(velocity);
+        float footprint = (traveled + ds * across) / uFocal / max(abs(dot(dir, uNormal)), .03)
+                        * (crossings > 0. ? squeeze : 1.);
+        vec3 light = plasma(sampleP, dir, footprint, density);
         // Colonne gaussienne intégrée sur le pas (évite des bandes aux angles rasants).
         float dh = abs(h1 - h0);
         float column = dh > .0001
@@ -209,9 +230,12 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
         float optical = min(column, 4.5) * .26;
         vec3 gained = transmission * light * optical;
         emission += gained;
-        emissionIn += gained * clamp(.5 - dot(sampleP, incoming), 0., 1.);
+        float firstPass = clamp((3. - (traveled + ds * across - length(origin))) * .5, 0., 1.);
+        emissionIn += gained * clamp(.5 - dot(sampleP, incoming), 0., 1.) * firstPass;
         transmission *= exp(-density * optical * .65);
+        if (h0 * h1 < 0.) crossings += 1.;
       }
+      traveled += ds;
       p = next; velocity = nextV;
     }
     // Anneau de photons : les rayons qui frôlent le bord de l'ombre font un demi-tour (anneau
