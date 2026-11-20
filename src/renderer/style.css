@@ -32,8 +32,8 @@
   --sc-link: #f0e9da; /* lignes entre les notes (leur transparence est gérée par l'app) */
   --sc-orbit: #f0e9da; /* anneaux des dossiers */
   --sc-label: #f0e9da; /* noms des notes sur le graphe */
-  --sc-nebula: #947dff; /* nébuleuse du ciel WebGL (scène "galaxie") : nuage, très atténué par l'app */
-  --sc-nebula-glow: #2b6bff; /* nébuleuse : reflets froids, teinte des étoiles lointaines */
+  --sc-nebula: #7a6f60; /* nébuleuse du ciel WebGL (scène "galaxie") : gris chaud, très atténué par l'app */
+  --sc-nebula-glow: #535866; /* nébuleuse : reflets gris froid peu saturés, teinte des étoiles lointaines */
 
   /* Polices : uniquement des polices installées sur l'ordinateur (rien n'est téléchargé).
      Sans-serif nette pour tout le texte ; monospace seulement pour chiffres, touches, valeurs.
