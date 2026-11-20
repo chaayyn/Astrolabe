@@ -8,6 +8,7 @@
 //   --size   taille du contenu de la fenêtre, en pixels CSS (défaut 1600x900)
 //   --wait   attente avant la photo, en ms, le temps que la disposition se stabilise (défaut 6000)
 //   --state  graph = le graphe seul ; home = Accueil ouvert ; settings = Paramètres ouverts
+//   --zoom   nombre de crans de zoom avant (touche +) : gros plan sur le trou noir (défaut 0)
 //   --my-settings  reprendre VOS réglages (thème, couleurs, curseurs). Sans cette option, l'app
 //                  part d'un profil vide et temporaire : les réglages PAR DÉFAUT du thème, sans
 //                  compteur FPS ; les images sont donc reproductibles (README, image de partage).
@@ -49,7 +50,9 @@ const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").sl
 const out = path.resolve(option("out", path.join(ROOT, ".local-review", "captures", `${state}-${stamp}.png`)));
 
 const mySettings = args.includes("--my-settings");
-const request = { out, width: Number(size[1]), height: Number(size[2]), wait, state, mySettings };
+const zoom = Number(option("zoom", "0"));
+if (!Number.isInteger(zoom) || zoom < 0 || zoom > 40) fail("--zoom doit être un nombre entier de 0 à 40");
+const request = { out, width: Number(size[1]), height: Number(size[2]), wait, state, mySettings, zoom };
 console.log(`capture : ${state}, ${size[1]}x${size[2]}, ${mySettings ? "vos réglages" : "réglages par défaut (profil temporaire)"}`);
 const env = { ...process.env, ASTROLABE_CAPTURE: JSON.stringify(request) };
 delete env.VITE_DEV_SERVER_URL; // toujours la version compilée, sans serveur de développement

@@ -19,6 +19,8 @@ export interface CaptureRequest {
   state: "graph" | "home" | "settings"; // graphe seul, Accueil ouvert, ou Paramètres ouverts
   /** `true` : reprendre les réglages réels de l'utilisateur ; sinon réglages par défaut (dossier temporaire). */
   mySettings?: boolean;
+  /** Nombre de crans de zoom avant (touche +) avant la photo : gros plan sur le trou noir. */
+  zoom?: number;
 }
 
 /** Lit la demande de capture, ou `null` s'il n'y en a pas. Quitte si elle est invalide. */
@@ -54,6 +56,11 @@ export async function runCapture(win: BrowserWindow, req: CaptureRequest): Promi
     for (const type of ["keyDown", "char", "keyUp"] as const) win.webContents.sendInputEvent({ type, keyCode });
     await wait(900); // le panneau finit de s'ouvrir
   };
+  for (let i = 0; i < (req.zoom ?? 0); i++) {
+    for (const type of ["keyDown", "char", "keyUp"] as const) win.webContents.sendInputEvent({ type, keyCode: "+" });
+    await wait(120);
+  }
+  if (req.zoom) await wait(1500); // le zoom animé se termine
   if (req.state === "home") await press("H");
   if (req.state === "settings") await press(",");
   const image = await win.webContents.capturePage();
