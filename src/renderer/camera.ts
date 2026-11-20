@@ -28,7 +28,7 @@ export class Camera {
   /** Rotation autour de l'axe vertical (gauche/droite), en radians. */
   yaw = 0;
   /** Inclinaison (vue de dessus quand c'est positif), en radians. */
-  pitch = 0.6;
+  pitch = 0.38; // ≈ 22° au-dessus du disque : on voit l'arc de lumière autour du trou noir
   /** Distance entre la caméra et le point visé. */
   distance = 900;
   /** Point visé (le centre de la rotation). */

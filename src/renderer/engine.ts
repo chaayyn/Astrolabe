@@ -93,7 +93,7 @@ export class Engine {
   /** Distance visée par un zoom animé (boutons + / −), ou `null` s'il n'y en a pas en cours. */
   private zoomGoal: number | null = null;
   /** Vue initiale (après le premier chargement), pour le bouton Recentrer. */
-  private home = { yaw: 0, pitch: 0.6, distance: 900 };
+  private home = { yaw: 0, pitch: 0.38, distance: 900 };
   /** Retour animé vers la vue initiale (bouton Recentrer). */
   private recentering: {
     from: { yaw: number; pitch: number; distance: number; target: [number, number, number] };
