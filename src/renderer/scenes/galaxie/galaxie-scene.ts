@@ -22,20 +22,20 @@ import { GalaxieStars } from "./stars";
 
 /** Réglages des étoiles et des liens (groupe "Étoiles et liens"). Défauts = le rendu prévu. */
 const STAR_PARAMS: readonly ParamDef[] = [
-  { id: "stars.glow", label: "Intensité du halo des étoiles", group: "Étoiles et liens", type: "slider", min: 0, max: 2, step: 0.05, unit: "×", default: 1 },
-  { id: "stars.size", label: "Taille des étoiles", group: "Étoiles et liens", type: "slider", min: 0.5, max: 2, step: 0.05, unit: "×", default: 1 },
-  { id: "stars.links", label: "Luminosité des liens", group: "Étoiles et liens", type: "slider", min: 0, max: 3, step: 0.05, unit: "×", default: 1 },
+  { id: "stars.glow", label: "Intensité du halo des étoiles", group: "Étoiles et liens", type: "slider", min: 0, max: 2, step: 0.05, unit: "×", default: 1.15 },
+  { id: "stars.size", label: "Taille des étoiles", group: "Étoiles et liens", type: "slider", min: 0.5, max: 2, step: 0.05, unit: "×", default: 0.8 },
+  { id: "stars.links", label: "Luminosité des liens", group: "Étoiles et liens", type: "slider", min: 0, max: 3, step: 0.05, unit: "×", default: 0.6 },
   { id: "stars.lens", label: "Déviation par la lentille", group: "Étoiles et liens", type: "slider", min: 0, max: 2, step: 0.05, unit: "×", default: 1 },
   { id: "links.lights", label: "Lumières sur les liens", group: "Étoiles et liens", type: "toggle", default: true },
   { id: "links.lightSpeed", label: "Vitesse des lumières", group: "Étoiles et liens", type: "slider", min: 0.2, max: 3, step: 0.1, unit: "×", default: 1 },
   { id: "stars.orbs", label: "Orbes des sections", group: "Étoiles et liens", type: "toggle", default: true },
   { id: "comets.on", label: "Comètes", group: "Étoiles et liens", type: "toggle", default: true },
-  { id: "comets.rate", label: "Fréquence des comètes", group: "Étoiles et liens", type: "slider", min: 0.2, max: 3, step: 0.1, unit: "×", default: 1 },
+  { id: "comets.rate", label: "Fréquence des comètes", group: "Étoiles et liens", type: "slider", min: 0.2, max: 3, step: 0.1, unit: "×", default: 0.8 },
 ];
 
 /** Réglages du ciel (groupe "Ciel"). Défauts = le rendu prévu. */
 const SKY_PARAMS: readonly ParamDef[] = [
-  { id: "sky.nebula", label: "Intensité de la nébuleuse", group: "Ciel", type: "slider", min: 0, max: 3, step: 0.05, unit: "×", default: 1 },
+  { id: "sky.nebula", label: "Intensité de la nébuleuse", group: "Ciel", type: "slider", min: 0, max: 3, step: 0.05, unit: "×", default: 1.2 },
   { id: "sky.density", label: "Densité des étoiles du ciel", group: "Ciel", type: "slider", min: 0, max: 2.5, step: 0.05, unit: "×", default: 1 },
   { id: "sky.brightness", label: "Luminosité générale", group: "Ciel", type: "slider", min: 0.3, max: 2, step: 0.05, unit: "×", default: 1 },
   { id: "sky.meteors", label: "Météores", group: "Ciel", type: "toggle", default: true },
@@ -43,10 +43,10 @@ const SKY_PARAMS: readonly ParamDef[] = [
 
 /** Réglages du trou noir (groupe "Trou noir"). Défauts = le rendu prévu. */
 const HOLE_PARAMS: readonly ParamDef[] = [
-  { id: "hole.brightness", label: "Luminosité du disque", group: "Trou noir", type: "slider", min: 0.2, max: 2.5, step: 0.05, unit: "×", default: 1 },
-  { id: "hole.lens", label: "Force de la lentille", group: "Trou noir", type: "slider", min: 0, max: 1.6, step: 0.05, unit: "×", default: 1 },
+  { id: "hole.brightness", label: "Luminosité du disque", group: "Trou noir", type: "slider", min: 0.2, max: 2.5, step: 0.05, unit: "×", default: 1.5 },
+  { id: "hole.lens", label: "Force de la lentille", group: "Trou noir", type: "slider", min: 0, max: 1.6, step: 0.05, unit: "×", default: 1.15 },
   { id: "hole.spin", label: "Vitesse de rotation du disque", group: "Trou noir", type: "slider", min: 0, max: 3, step: 0.1, unit: "×", default: 1 },
-  { id: "hole.halo", label: "Intensité du halo", group: "Trou noir", type: "slider", min: 0, max: 2.5, step: 0.05, unit: "×", default: 1 },
+  { id: "hole.halo", label: "Intensité du halo", group: "Trou noir", type: "slider", min: 0, max: 2.5, step: 0.05, unit: "×", default: 1.35 },
   { id: "hole.tilt", label: "Inclinaison du disque", group: "Trou noir", type: "slider", min: -30, max: 30, step: 1, unit: "°", default: 8 },
   {
     id: "hole.quality",
@@ -74,7 +74,7 @@ export class GalaxieScene implements Scene {
   /** Lentille du trou noir : dévie les étoiles et les liens qui passent derrière lui. */
   private lens = new Lens();
   private palette!: Palette;
-  private holeOptions: HoleOptions = { brightness: 1, lens: 1, spin: 1, halo: 1, tilt: 8, quality: "medium" };
+  private holeOptions: HoleOptions = { brightness: 1.5, lens: 1.15, spin: 1, halo: 1.35, tilt: 8, quality: "medium" };
   private reduceMotion = false;
 
   init(layer: HTMLElement, palette: Palette): void {
@@ -96,17 +96,17 @@ export class GalaxieScene implements Scene {
     this.classic.setParams(values);
     const num = (id: string, fallback: number) => (typeof values[id] === "number" ? (values[id] as number) : fallback);
     this.sky?.setOptions({
-      nebula: num("sky.nebula", 1),
+      nebula: num("sky.nebula", 1.2),
       density: num("sky.density", 1),
       brightness: num("sky.brightness", 1),
       meteors: values["sky.meteors"] !== false,
     });
     const quality = values["hole.quality"];
     this.holeOptions = {
-      brightness: num("hole.brightness", 1),
-      lens: num("hole.lens", 1),
+      brightness: num("hole.brightness", 1.5),
+      lens: num("hole.lens", 1.15),
       spin: num("hole.spin", 1),
-      halo: num("hole.halo", 1),
+      halo: num("hole.halo", 1.35),
       tilt: num("hole.tilt", 8),
       quality: quality === "low" || quality === "high" ? quality : "medium",
     };
@@ -118,7 +118,7 @@ export class GalaxieScene implements Scene {
       lightSpeed: num("links.lightSpeed", 1),
       orbs: values["stars.orbs"] !== false,
       comets: values["comets.on"] !== false,
-      cometRate: num("comets.rate", 1),
+      cometRate: num("comets.rate", 0.8),
       reduceMotion: this.reduceMotion || systemReducedMotion.matches,
     });
     this.syncMask();

@@ -114,14 +114,15 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     float filament = fbm(vec3(cos(phase) * 5., sin(phase) * 5., drift * 3.8) + vec3(flow * 2., flow * 2., flow * 4.));
     float lanes = pow(smoothstep(.24, .80, filament), 3.);
     float knots = pow(smoothstep(.25, .88, detail), 2.);
-    float energy = (.10 + lanes * 2.2 + knots * 2.8) * (.30 + 1.1 * flow);
-    energy *= .28 + 1.55 * noise(vec3(cos(phase) * 2.2, sin(phase) * 2.2, uSeed + uTime * .13));
+    // Calibrage (étape 20bis) : disque plus lisse et plus lumineux, stries fines plutôt que nuages.
+    float energy = (.45 + lanes * 1.2 + knots * 1.3) * (.55 + .7 * flow);
+    energy *= .7 + .6 * noise(vec3(cos(phase) * 2.2, sin(phase) * 2.2, uSeed + uTime * .13));
     float falloff = pow(3.8 / r, 3.0);
     density = window * (.22 + energy * .55);
     // Effet Doppler : le côté qui vient vers nous est plus brillant.
     vec3 velocity = normalize(cross(uNormal, p)) * sqrt(.5 / max(r - 1., 1.));
     float doppler = clamp(1. / (1. + dot(velocity, direction)), .65, 1.65);
-    float heat = clamp(.85 - (r - 3.) * .075 + knots * .25, 0., 1.);
+    float heat = clamp(1. - (r - 3.) * .065 + knots * .15, 0., 1.); // cœur blanc chaud, bords dorés
     vec3 tint = mix(uDeep, uMid, heat);
     tint = mix(tint, uHot, smoothstep(.72, 1., heat) * .62);
     return tint * (3.8 * falloff * energy * window * pow(doppler, 2.3)) * uBright;
@@ -155,9 +156,11 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
       velocity = incoming - radial * vr - radial * sqrt(max(.0001, vr * vr + b2 / (26. * 26. * 26.)));
     }
     vec3 emission = vec3(0); float transmission = 1.; bool captured = false;
+    float closestR = 1e9; // plus courte distance au centre (pour l'anneau de photons)
     for (int i = 0; i < 176; i++) {
       if (i >= uSteps) break;
       float r = length(p);
+      closestR = min(closestR, r);
       if (r < 1.015) { captured = true; break; }
       if (r > 26.5 && dot(p, velocity) > 0.) break;
       float ds = clamp(r * .105, .055, 1.6) * uStepScale;
@@ -168,7 +171,7 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
       float across = clamp(h0 / (abs(h0 - h1) < .00001 ? .00001 : h0 - h1), 0., 1.);
       vec3 sampleP = mix(p, next, across);
       float diskR = length(sampleP - uNormal * dot(sampleP, uNormal));
-      float thickness = .075 + .009 * diskR;
+      float thickness = .1 + .012 * diskR; // disque un peu plus épais (calibrage)
       if (min(abs(h0), abs(h1)) < thickness * 3. || h0 * h1 < 0.) {
         float density;
         vec3 light = plasma(sampleP, normalize(velocity), density);
@@ -182,6 +185,12 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
         transmission *= exp(-density * optical * .65);
       }
       p = next; velocity = nextV;
+    }
+    // Anneau de photons : les rayons qui frôlent l'horizon sans y tomber forment un fin anneau
+    // brillant collé à l'ombre (approximation visuelle, ajoutée au calibrage).
+    if (!captured) {
+      float ring = exp(-pow(max(closestR - 1.02, 0.) / .22, 2.));
+      emission += uHot * ring * 1.6 * uBright;
     }
     // Ombre : noire et opaque. Ailleurs : la lumière du disque, et le ciel visible à travers.
     float alpha = captured ? 1. : 1. - transmission;
@@ -217,7 +226,7 @@ const compositeFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     vec4 scene = texture(uScene, vUV);
     float decode = ${hdr ? "1." : "16."};
     vec3 base = scene.rgb * decode;
-    vec3 bloom = (texture(uBloom, vUV).rgb * .38 + texture(uWide, vUV).rgb * .38) * decode * uHalo;
+    vec3 bloom = (texture(uBloom, vUV).rgb * .45 + texture(uWide, vUV).rgb * .6) * decode * uHalo;
     // L'ombre (opaque et sombre) reste noire : le halo n'y déborde presque pas.
     float shade = scene.a * (1. - clamp(max(base.r, max(base.g, base.b)) * 4., 0., 1.));
     bloom *= 1. - .85 * shade;
