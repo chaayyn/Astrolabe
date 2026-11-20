@@ -119,7 +119,11 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   vec3 plasma(vec3 p, vec3 direction, float footprint, out float density) {
     vec3 tangent = normalize(cross(uNormal, uBasis));
     float x = dot(p, uBasis), y = dot(p, tangent), r = length(vec2(x, y));
-    float window = smoothstep(2.6, 3.1, r) * (1. - smoothstep(10.5, 17., r));
+    // Bord intérieur adouci, et d'autant plus que le pixel couvre une grande part du disque
+    // (correctif 20quater) : vu par la tranche devant l'ombre, un bord net y traçait une
+    // coupure horizontale en escalier.
+    float soft = min(footprint, 1.);
+    float window = smoothstep(2.45 - soft * .3, 3.5 + soft, r) * (1. - smoothstep(10.5, 17., r));
     if (window < .0001) { density = 0.; return vec3(0); }
     float a = atan(y, x);
     // Rotation différentielle : l'intérieur tourne plus vite que l'extérieur.
@@ -137,8 +141,11 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     float streaks = .62 + .26 * s1 + .12 * s2;
     float clumps = .85 + .15 * noise(vec3(cos(phase) * 3., sin(phase) * 3., r * .8 + uTime * .05));
     float energy = streaks * clumps;
-    float falloff = pow(3.2 / r, 2.2);
-    density = window * (.18 + energy * .35);
+    // Correctif 20quater : décroissance plus rapide (r^-3,5) : la lumière se concentre au bord
+    // intérieur, et la partie avant du disque, vue devant l'ombre, devient une bande fine
+    // au lieu d'une plaque uniforme.
+    float falloff = pow(3.2 / r, 3.5);
+    density = window * (.12 + energy * .3) * min(1., falloff * 1.6 + .15);
     // Effet Doppler discret : le côté qui vient vers nous est un peu plus brillant.
     vec3 velocity = normalize(cross(uNormal, p)) * sqrt(.5 / max(r - 1., 1.));
     float doppler = clamp(1. / (1. + dot(velocity, direction)), .7, 1.45);
@@ -224,10 +231,11 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
         float column = dh > .0001
           ? abs(erfApprox(h1 / thickness) - erfApprox(h0 / thickness)) * .8862269 * length(next - p) / dh
           : exp(-pow((h0 + h1) * .5 / thickness, 2.)) * length(next - p) / thickness;
-        // Calibrage 20ter : le disque se comporte plutôt comme une surface lumineuse que comme un gaz
-        // très fin : on plafonne le renforcement de profil, pour que les arcs lentillés (qui voient
-        // le disque de face) soient aussi lumineux que le disque vu par la tranche.
-        float optical = min(column, 4.5) * .26;
+        // Le renforcement de profil (disque vu par la tranche) est plafonné. Correctif 20quater :
+        // la lumière s'ajoute désormais au ciel au lieu d'être pondérée par l'opacité ; pour
+        // garder l'équilibre calibré en 20ter (lame vive, arcs lentillés plus discrets), le
+        // disque vu de face (colonne ~1,8) est atténué à part.
+        float optical = min(column, 8.) * .15 * mix(.4, 1., smoothstep(1.5, 6., column));
         vec3 gained = transmission * light * optical;
         emission += gained;
         float firstPass = clamp((3. - (traveled + ds * across - length(origin))) * .5, 0., 1.);
@@ -274,7 +282,13 @@ const blurFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   }
 `;
 
-/** Composition finale par-dessus le ciel : disque + halo, mappage des tons doux. */
+/**
+ * Composition finale par-dessus le ciel : disque + halo, mappage des tons doux.
+ * Correctif 20quater : la lumière du disque et du halo S'AJOUTE au ciel, et seule l'opacité
+ * (ombre, disque) le masque. Avant, la lumière était divisée par l'opacité puis saturée :
+ * toute zone faiblement opaque prenait une teinte beige uniforme (plaque devant l'ombre,
+ * coquilles grises du halo).
+ */
 const compositeFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   precision highp float;
   in vec2 vUV; out vec4 color;
@@ -286,14 +300,13 @@ const compositeFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     vec3 base = scene.rgb * decode;
     // Halo qui suit la forme du disque : surtout le flou proche, peu de flou large (pas de boule ronde).
     vec3 bloom = (texture(uBloom, vUV).rgb * .5 + texture(uWide, vUV).rgb * .16) * decode * uHalo;
-    // L'ombre (opaque et sombre) reste noire : le halo n'y déborde presque pas.
+    // L'ombre (opaque et sombre) reste noire : le halo n'y entre pas (correctif 20quater : le
+    // reste de halo flou à basse résolution y dessinait des taches en courbes de niveau).
     float shade = scene.a * (1. - clamp(max(base.r, max(base.g, base.b)) * 4., 0., 1.));
-    bloom *= 1. - .85 * shade;
-    float glow = max(bloom.r, max(bloom.g, bloom.b));
-    float alpha = scene.a + (1. - scene.a) * clamp(glow * 2., 0., 1.);
-    if (alpha < .0001) { color = vec4(0); return; }
-    vec3 mapped = pow(1. - exp(-(base + bloom) / max(alpha, .001)), vec3(1. / 2.2));
-    color = vec4(mapped * alpha, alpha);
+    bloom *= 1. - shade;
+    vec3 light = (base + bloom) * .5;
+    if (max(light.r, max(light.g, light.b)) < .0001 && scene.a < .0001) { color = vec4(0); return; }
+    color = vec4(pow(1. - exp(-light), vec3(1. / 2.2)), scene.a);
   }
 `;
 
