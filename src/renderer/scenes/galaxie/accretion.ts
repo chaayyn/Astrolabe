@@ -39,7 +39,7 @@ export interface HoleOptions {
 /** Rayon de Schwarzschild en unités du monde : l'ombre (2,598 Rs) = HOLE_RADIUS. */
 export const RS = HOLE_RADIUS / 2.598076211;
 /** Au-delà de ce paramètre d'impact (en Rs), un rayon n'est plus calculé. */
-const LENS_EXTENT = 14.5;
+const LENS_EXTENT = 21.5;
 
 /** Qualité : nombre maximal de pas par rayon, et résolution du calcul (part de celle du ciel). */
 const QUALITY = {
@@ -98,34 +98,32 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   float fbm(vec3 p) { return .56 * noise(p) + .28 * noise(p * 2.03 + 7.1) + .16 * noise(p * 4.07 - 3.8); }
 
   // Lumière émise par le disque au point p (densité renvoyée à part).
+  // Calibrage (étape 20ter) : disque fin et étendu, lisse, parcouru de fines stries concentriques
+  // (au lieu de nuages), cœur blanc chaud au bord intérieur, or vers l'extérieur.
   vec3 plasma(vec3 p, vec3 direction, out float density) {
     vec3 tangent = normalize(cross(uNormal, uBasis));
     float x = dot(p, uBasis), y = dot(p, tangent), r = length(vec2(x, y));
-    float window = smoothstep(2.85, 3.5, r) * (1. - smoothstep(8.5, 12.8, r));
+    float window = smoothstep(2.6, 3.1, r) * (1. - smoothstep(10.5, 17., r));
     if (window < .0001) { density = 0.; return vec3(0); }
     float a = atan(y, x);
     // Rotation différentielle : l'intérieur tourne plus vite que l'extérieur.
     float omega = .31 * pow(3.4 / r, 1.5);
     float phase = a - uTime * omega + uSeed;
-    float drift = r + uTime * .018;
-    vec3 q = vec3(cos(phase), sin(phase), drift * .30);
-    float flow = fbm(q * vec3(4., 4., 5.) + vec3(0, 0, uTime * .065));
-    float detail = fbm(vec3(cos(phase) * 13., sin(phase) * 13., drift * 2.7) + flow * 2.7 + uTime * .038);
-    float filament = fbm(vec3(cos(phase) * 5., sin(phase) * 5., drift * 3.8) + vec3(flow * 2., flow * 2., flow * 4.));
-    float lanes = pow(smoothstep(.24, .80, filament), 3.);
-    float knots = pow(smoothstep(.25, .88, detail), 2.);
-    // Calibrage (étape 20bis) : disque plus lisse et plus lumineux, stries fines plutôt que nuages.
-    float energy = (.45 + lanes * 1.2 + knots * 1.3) * (.55 + .7 * flow);
-    energy *= .7 + .6 * noise(vec3(cos(phase) * 2.2, sin(phase) * 2.2, uSeed + uTime * .13));
-    float falloff = pow(3.8 / r, 3.0);
-    density = window * (.22 + energy * .55);
-    // Effet Doppler : le côté qui vient vers nous est plus brillant.
+    // Stries fines le long du disque (fréquence surtout radiale), et un léger grain lent.
+    float s1 = noise(vec3(r * 7.5, cos(phase) * 1.2, sin(phase) * 1.2));
+    float s2 = noise(vec3(r * 19., cos(phase) * 2.4 + 3., sin(phase) * 2.4));
+    float streaks = .62 + .26 * s1 + .12 * s2;
+    float clumps = .85 + .15 * noise(vec3(cos(phase) * 3., sin(phase) * 3., r * .8 + uTime * .05));
+    float energy = streaks * clumps;
+    float falloff = pow(3.2 / r, 2.2);
+    density = window * (.18 + energy * .35);
+    // Effet Doppler discret : le côté qui vient vers nous est un peu plus brillant.
     vec3 velocity = normalize(cross(uNormal, p)) * sqrt(.5 / max(r - 1., 1.));
-    float doppler = clamp(1. / (1. + dot(velocity, direction)), .65, 1.65);
-    float heat = clamp(1. - (r - 3.) * .065 + knots * .15, 0., 1.); // cœur blanc chaud, bords dorés
+    float doppler = clamp(1. / (1. + dot(velocity, direction)), .7, 1.45);
+    float heat = clamp(1.15 - (r - 3.) * .09, 0., 1.);
     vec3 tint = mix(uDeep, uMid, heat);
-    tint = mix(tint, uHot, smoothstep(.72, 1., heat) * .62);
-    return tint * (3.8 * falloff * energy * window * pow(doppler, 2.3)) * uBright;
+    tint = mix(tint, uHot, smoothstep(.55, 1., heat) * .85);
+    return tint * (3. * falloff * energy * window * pow(doppler, 1.6)) * uBright;
   }
 
   float erfApprox(float x) {
@@ -143,8 +141,8 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     float b2 = max(0., dot(origin, origin) - closest * closest);
     float b = sqrt(b2);
     bool inside = dot(origin, origin) < 26. * 26.;
-    if (b > 14.3 || (!inside && closest < 0.)) discard;
-    float coverage = 1. - smoothstep(10., 14.3, b);
+    if (b > 21. || (!inside && closest < 0.)) discard;
+    float coverage = 1. - smoothstep(17.5, 21., b);
     vec3 p, velocity;
     if (inside) {
       p = origin; velocity = incoming; // caméra très proche : le rayon part d'ici
@@ -156,11 +154,9 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
       velocity = incoming - radial * vr - radial * sqrt(max(.0001, vr * vr + b2 / (26. * 26. * 26.)));
     }
     vec3 emission = vec3(0); float transmission = 1.; bool captured = false;
-    float closestR = 1e9; // plus courte distance au centre (pour l'anneau de photons)
     for (int i = 0; i < 176; i++) {
       if (i >= uSteps) break;
       float r = length(p);
-      closestR = min(closestR, r);
       if (r < 1.015) { captured = true; break; }
       if (r > 26.5 && dot(p, velocity) > 0.) break;
       float ds = clamp(r * .105, .055, 1.6) * uStepScale;
@@ -171,7 +167,7 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
       float across = clamp(h0 / (abs(h0 - h1) < .00001 ? .00001 : h0 - h1), 0., 1.);
       vec3 sampleP = mix(p, next, across);
       float diskR = length(sampleP - uNormal * dot(sampleP, uNormal));
-      float thickness = .1 + .012 * diskR; // disque un peu plus épais (calibrage)
+      float thickness = .02 + .004 * diskR; // disque fin : une lame lumineuse (calibrage 20ter)
       if (min(abs(h0), abs(h1)) < thickness * 3. || h0 * h1 < 0.) {
         float density;
         vec3 light = plasma(sampleP, normalize(velocity), density);
@@ -180,17 +176,22 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
         float column = dh > .0001
           ? abs(erfApprox(h1 / thickness) - erfApprox(h0 / thickness)) * .8862269 * length(next - p) / dh
           : exp(-pow((h0 + h1) * .5 / thickness, 2.)) * length(next - p) / thickness;
-        float optical = column * .22;
+        // Calibrage 20ter : le disque se comporte plutôt comme une surface lumineuse que comme un gaz
+        // très fin : on plafonne le renforcement de profil, pour que les arcs lentillés (qui voient
+        // le disque de face) soient aussi lumineux que le disque vu par la tranche.
+        float optical = min(column, 4.5) * .26;
         emission += transmission * light * optical;
         transmission *= exp(-density * optical * .65);
       }
       p = next; velocity = nextV;
     }
-    // Anneau de photons : les rayons qui frôlent l'horizon sans y tomber forment un fin anneau
-    // brillant collé à l'ombre (approximation visuelle, ajoutée au calibrage).
+    // Anneau de photons : les rayons qui frôlent l'horizon sans y tomber sont déviés de plus
+    // d'un demi-tour ; ils forment un anneau fin et brillant collé à l'ombre, et un second,
+    // plus fin et plus faible, pour ceux qui en font un tour complet (approximation visuelle).
     if (!captured) {
-      float ring = exp(-pow(max(closestR - 1.02, 0.) / .22, 2.));
-      emission += uHot * ring * 1.6 * uBright;
+      float bend = acos(clamp(dot(normalize(velocity), incoming), -1., 1.));
+      float ring = smoothstep(2.3, 3.1, bend) * .9 + smoothstep(5., 6.2, bend) * .6;
+      emission += uHot * ring * 1.7 * uBright;
     }
     // Ombre : noire et opaque. Ailleurs : la lumière du disque, et le ciel visible à travers.
     float alpha = captured ? 1. : 1. - transmission;
@@ -205,7 +206,7 @@ const blurFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   uniform sampler2D uInput; uniform vec2 uDirection; uniform bool uExtract;
   vec3 value(vec2 uv) {
     vec3 c = texture(uInput, uv).rgb${hdr ? "" : " * 16."};
-    if (uExtract) c = max(c - vec3(1.), vec3(0));
+    if (uExtract) c = max(c - vec3(1.4), vec3(0)); // seules les zones les plus claires débordent
     return c;
   }
   void main() {
@@ -226,7 +227,8 @@ const compositeFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     vec4 scene = texture(uScene, vUV);
     float decode = ${hdr ? "1." : "16."};
     vec3 base = scene.rgb * decode;
-    vec3 bloom = (texture(uBloom, vUV).rgb * .45 + texture(uWide, vUV).rgb * .6) * decode * uHalo;
+    // Halo qui suit la forme du disque : surtout le flou proche, peu de flou large (pas de boule ronde).
+    vec3 bloom = (texture(uBloom, vUV).rgb * .5 + texture(uWide, vUV).rgb * .16) * decode * uHalo;
     // L'ombre (opaque et sombre) reste noire : le halo n'y déborde presque pas.
     float shade = scene.a * (1. - clamp(max(base.r, max(base.g, base.b)) * 4., 0., 1.));
     bloom *= 1. - .85 * shade;
