@@ -235,11 +235,14 @@ export class ClassicScene implements Scene {
     const alpha = (lit ? 1 : 0.7) * (dimmed ? 0.35 : 1) * (behind ? 0.25 : 1) * o.opacity * this.fade(p.depth);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = `rgba(3, 4, 10, ${0.75 * alpha})`; // petit fond qui "coupe" le trait de l'anneau
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    // Pas de boîte derrière le nom (elle découpait la lueur du trou noir) : une ombre douce suffit.
+    ctx.shadowColor = `rgba(0, 0, 0, ${0.9 * alpha})`;
+    ctx.shadowBlur = 5;
     // Couleur des noms (lisible quel que soit l'accent) ; l'accent seulement pour l'anneau mis en évidence.
     ctx.fillStyle = `rgba(${lit ? this.palette.starAccent : this.palette.label}, ${alpha})`;
     ctx.fillText(text, p.x + 1.5, p.y + 0.5); // +1.5 : compense l'espacement après la dernière lettre
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = "transparent";
     ctx.letterSpacing = "0px";
     ctx.textAlign = "start";
   }
