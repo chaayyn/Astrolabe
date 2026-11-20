@@ -196,14 +196,35 @@ export class ClassicScene implements Scene {
    */
   private drawOrbitLabel(o: Orbit, lit: boolean, dimmed: boolean): void {
     const ctx = this.ctx;
-    const p = this.ringPoint(o, o.shownRadius, o.labelAngle);
-    if (!p.visible) return;
     ctx.font = '10px ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace';
     ctx.letterSpacing = "3px";
     const text = (o.folder === "" ? "Racine" : (o.folder.split("/").pop() ?? o.folder)).toUpperCase();
     const w = ctx.measureText(text).width + 3;
-    const rect = { x: p.x - w / 2 - 6, y: p.y - 8, w: w + 12, h: 16, folder: o.folder };
-    if (this.labelRects.some((t) => rect.x < t.x + t.w && rect.x + rect.w > t.x && rect.y < t.y + t.h && rect.y + rect.h > t.y)) {
+    const overlaps = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) =>
+      a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    // Le nom glisse un peu le long de son anneau si une étoile (ou un autre nom) est dessous.
+    let p: Projected | null = null;
+    let rect: { x: number; y: number; w: number; h: number; folder: string } | null = null;
+    for (const shift of [0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3, 0.45, -0.45]) {
+      const q = this.ringPoint(o, o.shownRadius, o.labelAngle + shift);
+      if (!q.visible) continue;
+      const r = { x: q.x - w / 2 - 6, y: q.y - 8, w: w + 12, h: 16, folder: o.folder };
+      if (this.labelRects.some((t) => overlaps(r, t))) continue;
+      let onStar = false;
+      for (const [n, s] of this.frame.screen) {
+        if (!s.visible) continue;
+        const rad = Math.max(n.radius * s.scale, 2) + 3;
+        if (overlaps(r, { x: s.x - rad, y: s.y - rad, w: rad * 2, h: rad * 2 })) {
+          onStar = true;
+          break;
+        }
+      }
+      if (onStar) continue;
+      p = q;
+      rect = r;
+      break;
+    }
+    if (!p || !rect) {
       ctx.letterSpacing = "0px";
       return;
     }
