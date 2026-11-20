@@ -5,11 +5,15 @@
 import type { Camera, Projected } from "../../camera";
 import { palette } from "../../palette";
 
-/** Rayon du disque noir (unités du monde). Les étoiles font 3 à 8. */
-export const HOLE_RADIUS = 16;
+/**
+ * Rayon du disque noir (unités du monde). Les étoiles font 3 à 8. Il fixe aussi la taille du
+ * trou noir WebGL de la scène "galaxie" (son ombre a ce rayon) : les anneaux des dossiers
+ * commencent bien au-delà de son disque, pour qu'il domine le centre.
+ */
+export const HOLE_RADIUS = 32;
 /** Anneau d'accrétion : du bord intérieur au bord extérieur (unités du monde). */
-const DISK_INNER = 22;
-export const DISK_OUTER = 52;
+const DISK_INNER = HOLE_RADIUS * 1.375;
+export const DISK_OUTER = HOLE_RADIUS * 3.25;
 const DISK_BANDS = 8; // l'anneau est dessiné comme 8 cercles concentriques collés
 const DISK_SEGMENTS = 72; // chaque cercle est découpé en 72 petits segments
 const SPIN = 0.5; // vitesse de rotation de la brillance (radians par seconde)
