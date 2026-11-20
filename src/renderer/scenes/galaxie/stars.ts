@@ -221,7 +221,7 @@ export class GalaxieStars extends ClassicScene {
     // Pointes de diffraction discrètes pour les plus connectées.
     if (n.gold && glow > 0) {
       const size = r * 16 * (0.8 + 0.3 * wave);
-      ctx.globalAlpha = alpha * 0.55 * Math.min(1, glow);
+      ctx.globalAlpha = alpha * 0.32 * Math.min(1, glow); // croix fine et faible (calibrage)
       ctx.drawImage(this.sprites.spikes, -size / 2, -size / 2, size, size);
     }
     // Halo doré bref si la note vient d'apparaître ou d'être modifiée (comme la scène classique).
@@ -326,7 +326,7 @@ export class GalaxieStars extends ClassicScene {
     if (!head.visible || !tail.visible) return;
     const life = Math.sin(Math.PI * k); // apparaît et disparaît en douceur
     const g = ctx.createLinearGradient(head.x, head.y, tail.x, tail.y);
-    g.addColorStop(0, `rgba(${this.palette.star}, ${0.45 * life})`);
+    g.addColorStop(0, `rgba(${this.palette.star}, ${0.3 * life})`); // bien moins brillante qu'une note
     g.addColorStop(1, `rgba(${this.palette.star}, 0)`);
     ctx.strokeStyle = g;
     ctx.lineWidth = 1.2;
@@ -336,7 +336,7 @@ export class GalaxieStars extends ClassicScene {
     ctx.lineTo(tail.x, tail.y);
     ctx.stroke();
     ctx.lineCap = "butt";
-    ctx.globalAlpha = 0.5 * life;
+    ctx.globalAlpha = 0.35 * life;
     ctx.drawImage(this.sprites.light, head.x - 3, head.y - 3, 6, 6);
     ctx.globalAlpha = 1;
   }
@@ -386,10 +386,10 @@ function spikes(rgb: string): HTMLCanvasElement {
   ]) {
     const grad = g.createLinearGradient(x0, y0, x1, y1);
     grad.addColorStop(0, `rgba(${rgb}, 0)`);
-    grad.addColorStop(0.5, `rgba(${rgb}, 0.9)`);
+    grad.addColorStop(0.5, `rgba(${rgb}, 0.75)`);
     grad.addColorStop(1, `rgba(${rgb}, 0)`);
     g.strokeStyle = grad;
-    g.lineWidth = 1.2;
+    g.lineWidth = 0.8;
     g.beginPath();
     g.moveTo(x0, y0);
     g.lineTo(x1, y1);
