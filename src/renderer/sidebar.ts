@@ -27,6 +27,8 @@ export interface SidebarCallbacks {
   onHover(path: string | null): void;
   /** Clic sur une note. */
   onSelect(path: string): void;
+  /** Bouton "cible" d'un dossier : la caméra vole vers son anneau. */
+  onFocusFolder(folder: string): void;
   /** La barre latérale vient d'être repliée (`false`) ou dépliée (`true`). */
   onToggle(open: boolean): void;
 }
@@ -215,7 +217,18 @@ export class Sidebar {
         // Après le redessin, le focus clavier reste sur ce dossier.
         $("tree").querySelector<HTMLButtonElement>(`button[data-folder="${CSS.escape(child.path)}"]`)?.focus();
       });
-      li.append(btn);
+      // Petit bouton "cible" : voler vers l'anneau de ce dossier dans la vue 3D.
+      const target = document.createElement("button");
+      target.className = "tree-target";
+      target.setAttribute("aria-label", `Voir l'orbite du dossier ${child.name}`);
+      target.title = "Voir son orbite";
+      target.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" /><circle cx="12" cy="12" r="1.5" /><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5" /></svg>';
+      target.addEventListener("click", () => this.callbacks.onFocusFolder(child.path));
+      const row = document.createElement("div");
+      row.className = "tree-row";
+      row.append(btn, target);
+      li.append(row);
       if (isOpen) li.append(this.treeList(child, depth + 1));
       ul.append(li);
     }

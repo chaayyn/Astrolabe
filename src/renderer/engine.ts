@@ -28,6 +28,10 @@ const HOVER_SPIN = 0.5;
 export const ENGINE_PARAMS: readonly ParamDef[] = [
   { id: "motion.rotation", label: "Vitesse de rotation", group: "Mouvement", type: "slider", min: 0, max: 5, step: 0.1, unit: "×", default: 1 },
   { id: "motion.reduce", label: "Réduire le mouvement", group: "Mouvement", type: "toggle", default: false },
+  { id: "layout.spacing", label: "Espacement des orbites", group: "Orbites", type: "slider", min: 0.5, max: 2, step: 0.05, unit: "×", default: 1 },
+  { id: "layout.tilt", label: "Inclinaison du disque", group: "Orbites", type: "slider", min: 0, max: 25, step: 1, unit: "°", default: 10 },
+  // Lu par les scènes (noms écrits sur les anneaux), déclaré ici avec la disposition.
+  { id: "display.folderLabels", label: "Noms des dossiers", group: "Orbites", type: "toggle", default: true },
   { id: "display.labels", label: "Noms affichés sur le graphe", group: "Affichage", type: "slider", min: 0, max: 12, step: 1, default: 5 },
   { id: "display.fps", label: "Afficher les FPS", group: "Affichage", type: "toggle", default: false },
   { id: "display.keybar", label: "Afficher la bande de raccourcis", group: "Affichage", type: "toggle", default: true },
@@ -44,6 +48,8 @@ export class Engine {
 
   private hovered: GraphNode | null = null;
   private drag: { x: number; y: number; mode: "rotate" | "pan" } | null = null;
+  /** Point où le bouton a été enfoncé : s'il est relâché sans avoir bougé, c'est un clic. */
+  private downAt: { x: number; y: number; button: number } | null = null;
   private mouse: { x: number; y: number } | null = null;
   /** Fin du dernier geste sur la caméra (ms) : la rotation reprend RESUME_MS après. */
   private lastInteraction = -Infinity;
@@ -151,6 +157,8 @@ export class Engine {
    * `null` retire la mise en évidence (la caméra ne bouge pas).
    */
   select(id: string | null): void {
+    // Échap pendant qu'un dossier est cadré : retour à la vue d'ensemble.
+    if (id === null && this.selectedFolder !== null) return this.recenter();
     this.selectedId = id;
     this.selectedFolder = null;
     this.recentering = null;
@@ -164,8 +172,11 @@ export class Engine {
    * qui montre l'anneau en entier. Pour la racine (""), on se rapproche du trou noir.
    */
   focusOrbit(folder: string): void {
-    const orbit = this.graph.orbits.find((o) => o.alive && o.folder === folder);
-    const distance = orbit ? Camera.clampDistance(orbit.radius * 2.3 + 120) : 320;
+    // L'anneau du dossier ; pour un dossier sans note directe ("Archives" qui ne contient que
+    // "Archives/2025"…), le plus grand anneau de ses sous-dossiers ; la racine a le sien.
+    const orbits = this.graph.orbits.filter((o) => o.alive && (o.folder === folder || (folder !== "" && o.folder.startsWith(folder + "/"))));
+    const radius = Math.max(0, ...orbits.map((o) => o.radius));
+    const distance = orbits.length > 0 ? Camera.clampDistance(radius * 2.1 + 150) : 320;
     this.selectedId = null;
     this.selectedFolder = folder;
     this.recentering = null;
@@ -229,6 +240,11 @@ export class Engine {
     this.rotationFactor = typeof values["motion.rotation"] === "number" ? values["motion.rotation"] : 1;
     this.reduceMotion = values["motion.reduce"] === true;
     this.labelCount = typeof values["display.labels"] === "number" ? values["display.labels"] : 5;
+    // Disposition des anneaux : les étoiles glissent vers leur nouvelle place (immédiat en mouvement réduit).
+    const spacing = typeof values["layout.spacing"] === "number" ? values["layout.spacing"] : 1;
+    const tilt = typeof values["layout.tilt"] === "number" ? values["layout.tilt"] : 10;
+    this.graph.setLayout(spacing, tilt);
+    this.graph.instant = this.reduceMotion;
   }
 
   /** Une couleur du thème a été surchargée : relit les couleurs (la scène suit seule). */
@@ -316,10 +332,18 @@ export class Engine {
       this.recentering = null; // saisir la vue interrompt le retour à la vue initiale
       const mode = e.button === 2 || e.shiftKey ? "pan" : "rotate";
       this.drag = { x: e.clientX, y: e.clientY, mode };
+      this.downAt = { x: e.clientX, y: e.clientY, button: e.button };
       c.classList.add("dragging");
     });
     c.addEventListener("contextmenu", (e) => e.preventDefault()); // pas de menu au clic droit
-    window.addEventListener("mouseup", () => {
+    window.addEventListener("mouseup", (e) => {
+      // Clic (sans glisser) sur le nom d'un dossier : la caméra vole vers son anneau.
+      const down = this.downAt;
+      this.downAt = null;
+      if (down && down.button === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) {
+        const folder = this.scene.folderAt?.(e.clientX, e.clientY) ?? null;
+        if (folder !== null) this.focusOrbit(folder);
+      }
       if (this.drag) touch(); // le délai de reprise compte à partir du relâchement
       this.drag = null;
       c.classList.remove("dragging");
@@ -367,7 +391,7 @@ export class Engine {
 
     // Premier chargement : reculer la caméra pour voir toutes les orbites.
     if (!this.fitted && this.graph.nodes.length > 0) {
-      this.camera.distance = Math.max(450, this.graph.outerRadius * 2.2 + 100);
+      this.camera.distance = Math.max(450, this.graph.outerRadius * 1.9 + 120);
       this.home = { yaw: this.camera.yaw, pitch: this.camera.pitch, distance: this.camera.distance };
       this.fitted = true;
     }
@@ -440,7 +464,8 @@ export class Engine {
     this.scene.displace?.(this.screen, this.camera);
     const underMouse = this.findHovered();
     this.hoveringStar = underMouse !== null;
-    this.canvas.style.cursor = underMouse ? "pointer" : "";
+    const overFolder = !underMouse && this.mouse && !this.drag ? this.scene.folderAt?.(this.mouse.x, this.mouse.y) != null : false;
+    this.canvas.style.cursor = underMouse || overFolder ? "pointer" : "";
     // Étoile mise en évidence : celle sous la souris, sinon celle survolée dans le panneau,
     // sinon celle choisie dans le panneau.
     this.hovered = underMouse ?? this.nodeById(this.panelHoverId) ?? this.nodeById(this.selectedId);

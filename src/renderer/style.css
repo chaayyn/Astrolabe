@@ -691,6 +691,51 @@ button.line:hover {
   border-top: var(--sc-border-width) solid var(--sc-hairline);
 }
 
+/* Ligne d'un dossier : le dossier, et à droite un petit bouton "cible" (voler vers son orbite). */
+.tree-row {
+  display: flex;
+  align-items: center;
+}
+
+.tree-row > .line {
+  flex: 1;
+  min-width: 0;
+}
+
+.tree-target {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sc-radius);
+  background: none;
+  color: var(--sc-text-dim);
+  opacity: 0;
+  transition: opacity var(--sc-fade), color var(--sc-fade);
+}
+
+.tree-target svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.tree-row:hover .tree-target,
+.tree-target:focus-visible {
+  opacity: 1;
+}
+
+.tree-target:hover {
+  background: var(--sc-hover);
+  color: var(--sc-accent);
+}
+
 .twisty {
   width: 10px;
   color: var(--sc-text-dim);

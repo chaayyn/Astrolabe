@@ -107,6 +107,7 @@ void document.fonts.ready.then(refitKeybar); // largeurs du texte justes une foi
 const sidebar = new Sidebar({
   onHover: (path) => view.setPanelHover(path),
   onSelect: (path) => view.select(path),
+  onFocusFolder: (folder) => view.focusOrbit(folder),
   onToggle: () => setInset(panelInset()),
 });
 drawers.onChange = () => setInset(panelInset());
