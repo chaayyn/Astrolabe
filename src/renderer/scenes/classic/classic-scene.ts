@@ -5,7 +5,7 @@ import type { Projected } from "../../camera";
 import type { GraphEdge, GraphNode, Orbit } from "../../graph";
 import type { ParamDef, ParamValues } from "../../params";
 import { depthFade, type Palette, type Scene, type SceneFrame, type SceneGraph } from "../scene";
-import { drawBlackHole } from "./blackhole";
+import { drawBlackHole, HOLE_RADIUS } from "./blackhole";
 import { Starfield } from "./starfield";
 
 const FLASH_MS = 1500; // durée du halo doré sur une étoile nouvelle/modifiée
@@ -43,6 +43,10 @@ export class ClassicScene implements Scene {
   private holeMask: number | null = null;
   /** Valeurs courantes des réglages (multiplicateurs, 1 = rendu habituel). */
   protected opts = { glow: 1, size: 1, links: 1 };
+  /** Réglage "Noms des dossiers" (moteur, groupe Orbites). */
+  private folderLabels = true;
+  /** Zones des noms de dossiers écrits à la dernière image (pour le clic). */
+  private labelRects: { x: number; y: number; w: number; h: number; folder: string }[] = [];
   private canvas = document.createElement("canvas");
   protected ctx = this.canvas.getContext("2d")!;
   /** Ciel étoilé du fond (3 couches pré-dessinées). */
@@ -86,6 +90,7 @@ export class ClassicScene implements Scene {
     const num = (id: string) => (typeof values[id] === "number" ? (values[id] as number) : 1);
     this.opts = { glow: num("stars.glow"), size: num("stars.size"), links: num("stars.links") };
     this.sky.setOptions(num("stars.skyDensity"), num("stars.twinkle"));
+    this.folderLabels = values["display.folderLabels"] !== false;
   }
 
   /** Refait les halos si les couleurs ont changé (ex. couleur des étoiles modifiée dans Paramètres). */
@@ -113,7 +118,8 @@ export class ClassicScene implements Scene {
     // Le fond scintille et le trou noir tourne : on redessine toute l'image à chaque fois.
     if (this.starfield) this.sky.draw(this.ctx, frame.time / 1000, frame.camera.yaw, frame.camera.pitch);
     else this.ctx.clearRect(0, 0, frame.camera.width, frame.camera.height);
-    for (const o of this.graph.orbits) this.drawOrbit(o);
+    this.labelRects = [];
+    for (const o of [...this.graph.orbits].sort((a, b) => a.index - b.index)) this.drawOrbit(o);
     this.drawScene();
     this.afterScene();
   }
@@ -139,14 +145,18 @@ export class ClassicScene implements Scene {
     return depthFade(depth, this.frame.camera, this.graph.outerRadius);
   }
 
-  /** Un anneau : cercle 3D incliné, projeté (il devient une ellipse), en pointillé. */
+  /**
+   * Un anneau : le cercle d'un dossier dans le disque, projeté (il devient une ellipse), en
+   * trait fin continu dont l'opacité suit la profondeur. Plus net si une note du dossier est
+   * survolée ou si le dossier est choisi ; estompé si un AUTRE dossier est choisi.
+   */
   private drawOrbit(o: Orbit): void {
     const ctx = this.ctx;
     const { camera, highlighted: h, selectedFolder } = this.frame;
     const palette = this.palette;
-    // Orbite de l'étoile survolée, ou du dossier choisi dans la fenêtre Home.
-    const lit = (h !== null && !h.ghost && h.folder === o.folder) || selectedFolder === o.folder;
-    const base = (lit ? 0.7 : Math.max(0.22, 0.45 - o.index * 0.07)) * o.opacity;
+    const lit = (h !== null && !h.ghost && h.folder === o.folder) || (selectedFolder !== null && inFolder(o.folder, selectedFolder));
+    const dimmed = selectedFolder !== null && !lit;
+    const base = (lit ? 0.75 : 0.3) * (dimmed ? 0.35 : 1) * o.opacity;
     const rgb = lit ? palette.starAccent : palette.orbit;
     const r = o.shownRadius;
 
@@ -154,14 +164,10 @@ export class ClassicScene implements Scene {
     const pts: Projected[] = [];
     for (let i = 0; i <= RING_SEGMENTS; i++) {
       const t = (i / RING_SEGMENTS) * Math.PI * 2;
-      const c = Math.cos(t) * r;
-      const s = Math.sin(t) * r;
-      pts.push(camera.project(c * o.u[0] + s * o.v[0], c * o.u[1] + s * o.v[1], c * o.u[2] + s * o.v[2]));
+      pts.push(this.ringPoint(o, r, t));
     }
-
-    // Un segment sur deux (effet pointillé), chacun avec l'opacité de sa profondeur.
-    ctx.lineWidth = 1;
-    for (let i = 0; i < RING_SEGMENTS; i += 2) {
+    ctx.lineWidth = lit ? 1.2 : 0.8;
+    for (let i = 0; i < RING_SEGMENTS; i++) {
       const a = pts[i];
       const b = pts[i + 1];
       if (!a.visible || !b.visible) continue;
@@ -172,22 +178,68 @@ export class ClassicScene implements Scene {
       ctx.stroke();
     }
 
-    // Nom du dossier, posé sur le point le plus haut de l'anneau à l'écran.
-    let top: Projected | null = null;
-    for (const p of pts) if (p.visible && (!top || p.y < top.y)) top = p;
-    if (!top) return;
+    if (this.folderLabels) this.drawOrbitLabel(o, lit, dimmed);
+  }
+
+  /** Un point de l'anneau `o` (rayon r, angle t), projeté à l'écran. */
+  private ringPoint(o: Orbit, r: number, t: number): Projected {
+    const c = Math.cos(t) * r;
+    const s = Math.sin(t) * r;
+    return this.frame.camera.project(c * o.u[0] + s * o.v[0], c * o.u[1] + s * o.v[1], c * o.u[2] + s * o.v[2]);
+  }
+
+  /**
+   * Nom du dossier, posé SUR son anneau, à un angle propre à chaque anneau (les noms se
+   * répartissent autour du disque). Toujours écrit droit, face à la caméra. Il est sauté
+   * s'il chevaucherait un nom déjà écrit, et estompé s'il passe derrière le trou noir.
+   * Sa zone est retenue : un clic dessus fait voler la caméra vers l'anneau (folderAt).
+   */
+  private drawOrbitLabel(o: Orbit, lit: boolean, dimmed: boolean): void {
+    const ctx = this.ctx;
+    const p = this.ringPoint(o, o.shownRadius, o.labelAngle);
+    if (!p.visible) return;
     ctx.font = '10px ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace';
     ctx.letterSpacing = "3px";
+    const text = (o.folder === "" ? "Racine" : (o.folder.split("/").pop() ?? o.folder)).toUpperCase();
+    const w = ctx.measureText(text).width + 3;
+    const rect = { x: p.x - w / 2 - 6, y: p.y - 8, w: w + 12, h: 16, folder: o.folder };
+    if (this.labelRects.some((t) => rect.x < t.x + t.w && rect.x + rect.w > t.x && rect.y < t.y + t.h && rect.y + rect.h > t.y)) {
+      ctx.letterSpacing = "0px";
+      return;
+    }
+    this.labelRects.push(rect);
+    // Derrière le trou noir et tout près de lui à l'écran : très pâle.
+    const hole = this.frame.camera.project(0, 0, 0);
+    const behind = hole.visible && p.depth > hole.depth && Math.hypot(p.x - hole.x, p.y - hole.y) < HOLE_RADIUS * 3.4 * hole.scale;
+    const alpha = (lit ? 1 : 0.7) * (dimmed ? 0.35 : 1) * (behind ? 0.25 : 1) * o.opacity * this.fade(p.depth);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const text = o.folder.toUpperCase();
-    const w = ctx.measureText(text).width;
-    ctx.fillStyle = `rgba(3, 4, 10, ${0.85 * o.opacity})`; // petit fond qui "coupe" le trait
-    ctx.fillRect(top.x - w / 2 - 8, top.y - 7, w + 16, 14);
-    ctx.fillStyle = `rgba(${palette.starAccent}, ${(lit ? 1 : 0.85) * o.opacity})`;
-    ctx.fillText(text, top.x + 1.5, top.y + 0.5); // +1.5 : compense l'espacement après la dernière lettre
+    ctx.fillStyle = `rgba(3, 4, 10, ${0.75 * alpha})`; // petit fond qui "coupe" le trait de l'anneau
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    // Couleur des noms (lisible quel que soit l'accent) ; l'accent seulement pour l'anneau mis en évidence.
+    ctx.fillStyle = `rgba(${lit ? this.palette.starAccent : this.palette.label}, ${alpha})`;
+    ctx.fillText(text, p.x + 1.5, p.y + 0.5); // +1.5 : compense l'espacement après la dernière lettre
     ctx.letterSpacing = "0px";
     ctx.textAlign = "start";
+  }
+
+  /** Le dossier dont le nom est sous ce point de l'écran (dernière image dessinée), ou `null`. */
+  folderAt(x: number, y: number): string | null {
+    if (!this.folderLabels) return null;
+    const hit = this.labelRects.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    return hit ? hit.folder : null;
+  }
+
+  /**
+   * Poids d'un lien (multiplie son opacité) : plus discret entre étoiles peu connectées ;
+   * avec un dossier choisi, ses liens ressortent et les autres s'effacent.
+   */
+  protected linkWeight(e: GraphEdge): number {
+    const weak = 0.45 + 0.55 * Math.min(1, Math.min(e.source.degree, e.target.degree) / 6);
+    const sel = this.frame.selectedFolder;
+    if (sel === null) return weak;
+    const touches = (!e.source.ghost && inFolder(e.source.folder, sel)) || (!e.target.ghost && inFolder(e.target.folder, sel));
+    return touches ? 1.6 : weak * 0.35;
   }
 
   /**
@@ -215,7 +267,9 @@ export class ClassicScene implements Scene {
     }
     for (const [n, p] of screen) {
       if (!p.visible) continue;
-      const dim = h !== null && n !== h && !neighbors.has(n);
+      // Atténuée : hors des voisins de l'étoile survolée, ou hors du dossier choisi.
+      const sel = this.frame.selectedFolder;
+      const dim = (h !== null && n !== h && !neighbors.has(n)) || (sel !== null && (n.ghost || !inFolder(n.folder, sel)));
       items.push({ depth: p.depth, draw: () => this.drawNode(n, p, dim, time) });
     }
     // Le trou noir est trié comme le reste : ce qui est derrière lui est peint avant,
@@ -255,7 +309,7 @@ export class ClassicScene implements Scene {
     // Au survol : les liens de l'étoile s'éclairent en doré, les autres s'effacent.
     ctx.strokeStyle = lit
       ? `rgba(${palette.starAccent}, 0.85)`
-      : `rgba(${palette.link}, ${Math.min(1, (anyHover ? 0.06 : 0.28) * depthAlpha * this.opts.links)})`;
+      : `rgba(${palette.link}, ${Math.min(1, (anyHover ? 0.04 : 0.12) * depthAlpha * this.opts.links * this.linkWeight(e))})`;
     ctx.lineWidth = 1;
     ctx.setLineDash(ghost ? [3, 4] : []); // lien vers une note inexistante : pointillé
     ctx.beginPath();
@@ -330,4 +384,9 @@ function makeGlow(rgb: string): HTMLCanvasElement {
   g.fillStyle = grad;
   g.fillRect(0, 0, size, size);
   return c;
+}
+
+/** Vrai si un dossier est `sel` ou l'un de ses sous-dossiers ("" = la racine seule). */
+function inFolder(folder: string, sel: string): boolean {
+  return sel === "" ? folder === "" : folder === sel || folder.startsWith(sel + "/");
 }

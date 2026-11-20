@@ -117,7 +117,7 @@ export class GalaxieStars extends ClassicScene {
     const path = this.edgePath(e, a, b);
 
     // Trait : dégradé de la couleur d'une étoile à l'autre, très fin et semi-transparent.
-    const base = Math.min(1, (anyHover ? 0.05 : 0.22) * fade * this.opts.links);
+    const base = Math.min(1, (anyHover ? 0.03 : 0.1) * fade * this.opts.links * this.linkWeight(e));
     const colorOf = (n: GraphNode) => (n.gold ? pal.starAccent : pal.link);
     if (lit) {
       ctx.strokeStyle = `rgba(${pal.starAccent}, 0.85)`;

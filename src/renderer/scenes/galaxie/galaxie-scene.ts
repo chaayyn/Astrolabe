@@ -133,6 +133,11 @@ export class GalaxieScene implements Scene {
     this.classic.displaceStars(screen);
   }
 
+  /** Nom de dossier sous la souris (dessiné par la partie classique). */
+  folderAt(x: number, y: number): string | null {
+    return this.classic.folderAt(x, y);
+  }
+
   update(graph: SceneGraph): void {
     this.classic.update(graph);
   }

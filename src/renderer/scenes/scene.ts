@@ -61,6 +61,8 @@ export interface Scene {
    * étoile invisible (`visible = false`) si elle est cachée.
    */
   displace?(screen: Map<GraphNode, Projected>, camera: Camera): void;
+  /** Facultatif : le dossier dont le nom est écrit sous ce point de l'écran (pour voler vers lui). */
+  folderAt?(x: number, y: number): string | null;
 }
 
 /**
