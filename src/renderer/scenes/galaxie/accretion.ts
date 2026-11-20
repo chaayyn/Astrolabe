@@ -273,7 +273,7 @@ const blurFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     vec3 c = texture(uInput, uv).rgb${hdr ? "" : " * 16."};
     // Seules les zones les plus claires débordent. Seuil sur la composante la plus forte, en
     // gardant la teinte (correctif 20quater : soustraire le seuil à chaque composante virait au gris).
-    if (uExtract) { float m = max(c.r, max(c.g, c.b)); c *= max(m - 1.6, 0.) / max(m, .0001); }
+    if (uExtract) { float m = max(c.r, max(c.g, c.b)); c *= max(m - 1., 0.) / max(m, .0001); }
     return c;
   }
   void main() {
@@ -297,13 +297,15 @@ const compositeFragment = (hdr: boolean) => /* glsl */ `#version 300 es
   in vec2 vUV; out vec4 color;
   uniform sampler2D uScene, uBloom, uWide;
   uniform float uHalo;
-  const float EXPOSURE = .45;
+  const float EXPOSURE = 1.;
+  const float WHITE = 8.; // valeur qui atteint le blanc : au-dessous, la courbe garde un dégradé
+  float tone(float x) { return min(1., x * (1. + x / (WHITE * WHITE)) / (1. + x)); }
   void main() {
     vec4 scene = texture(uScene, vUV);
     float decode = ${hdr ? "1." : "16."};
     vec3 base = scene.rgb * decode;
     // Halo qui suit la forme du disque : surtout le flou proche, peu de flou large (pas de boule ronde).
-    vec3 bloom = (texture(uBloom, vUV).rgb * .3 + texture(uWide, vUV).rgb * .12) * decode * uHalo;
+    vec3 bloom = (texture(uBloom, vUV).rgb * .6 + texture(uWide, vUV).rgb * .18) * decode * uHalo;
     // L'ombre (opaque et sombre) reste noire : le halo n'y entre pas (correctif 20quater : le
     // reste de halo flou à basse résolution y dessinait des taches en courbes de niveau).
     float shade = scene.a * (1. - clamp(max(base.r, max(base.g, base.b)) * 4., 0., 1.));
@@ -312,9 +314,12 @@ const compositeFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     float peak = max(light.r, max(light.g, light.b));
     if (peak < .0001 && scene.a < .0001) { color = vec4(0); return; }
     // Courbe douce appliquée à la composante la plus forte, même facteur pour les trois : la
-    // teinte reste (dorée) ; 15 % de courbe par composante blanchit un peu le cœur le plus chaud.
-    vec3 hue = light * ((1. - exp(-peak)) / max(peak, .0001));
-    vec3 mapped = pow(mix(hue, 1. - exp(-light), .15), vec3(1. / 2.2));
+    // teinte reste (dorée). Étape 20quinquies : courbe à longue épaule (blanc atteint seulement
+    // à WHITE, dégradé gardé au-dessous) et exposition relevée, pour retrouver l'éclat d'avant ;
+    // seules les valeurs les plus fortes glissent peu à peu vers le blanc (comme une pellicule
+    // surexposée), sans aplat.
+    vec3 hue = light * (tone(peak) / max(peak, .0001));
+    vec3 mapped = pow(mix(hue, vec3(tone(light.r), tone(light.g), tone(light.b)), .15 + .5 * smoothstep(1.5, 8., peak)), vec3(1. / 2.2));
     color = vec4(mapped, scene.a);
   }
 `;
