@@ -141,17 +141,17 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     float streaks = .62 + .26 * s1 + .12 * s2;
     float clumps = .85 + .15 * noise(vec3(cos(phase) * 3., sin(phase) * 3., r * .8 + uTime * .05));
     float energy = streaks * clumps;
-    // Correctif 20quater : décroissance plus rapide (r^-3,5) : la lumière se concentre au bord
+    // Correctif 20quater : décroissance plus rapide (r^-3) : la lumière se concentre au bord
     // intérieur, et la partie avant du disque, vue devant l'ombre, devient une bande fine
     // au lieu d'une plaque uniforme.
-    float falloff = pow(3.2 / r, 3.5);
+    float falloff = pow(3.2 / r, 3.);
     density = window * (.12 + energy * .3) * min(1., falloff * 1.6 + .15);
     // Effet Doppler discret : le côté qui vient vers nous est un peu plus brillant.
     vec3 velocity = normalize(cross(uNormal, p)) * sqrt(.5 / max(r - 1., 1.));
     float doppler = clamp(1. / (1. + dot(velocity, direction)), .7, 1.45);
-    float heat = clamp(1.15 - (r - 3.) * .15, 0., 1.);
+    float heat = clamp(1.15 - (r - 3.) * .11, 0., 1.);
     vec3 tint = mix(uDeep, uMid, heat);
-    tint = mix(tint, uHot, smoothstep(.55, 1., heat) * .45);
+    tint = mix(tint, uHot, smoothstep(.55, 1., heat) * .75);
     return tint * (3. * falloff * energy * window * pow(doppler, 1.6)) * uBright;
   }
 
@@ -233,9 +233,9 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
           : exp(-pow((h0 + h1) * .5 / thickness, 2.)) * length(next - p) / thickness;
         // Le renforcement de profil (disque vu par la tranche) est plafonné. Correctif 20quater :
         // la lumière s'ajoute désormais au ciel au lieu d'être pondérée par l'opacité ; pour
-        // garder l'équilibre calibré en 20ter (lame vive, arcs lentillés plus discrets), le
-        // disque vu de face (colonne ~1,8) est atténué à part.
-        float optical = min(column, 8.) * .15 * mix(.4, 1., smoothstep(1.5, 6., column));
+        // garder une lame vive, le disque vu de face (colonne ~1,8) est un peu atténué ;
+        // étape 20quinquies : plafond relevé, pour une lame éclatante comme avant 20quater.
+        float optical = min(column, 12.) * .15 * mix(.85, 1., smoothstep(1.5, 6., column));
         vec3 gained = transmission * light * optical;
         emission += gained;
         float firstPass = clamp((3. - (traveled + ds * across - length(origin))) * .5, 0., 1.);
@@ -254,7 +254,8 @@ const rayFragment = (hdr: boolean) => /* glsl */ `#version 300 es
     // s'allumait par endroits seulement ; sa luminosité baisse un peu quand il s'élargit.
     float d = max(b / uShadowB - 1., 0.), dp = pixel / uShadowB;
     float ring = (1. - smoothstep(.022, .067 + dp, d)) * .9 * sqrt(.067 / (.067 + dp))
-               + (1. - smoothstep(.0012, .0045 + dp, d)) * .6 * sqrt(.0045 / (.0045 + dp));
+               + (1. - smoothstep(.0012, .0045 + dp, d)) * .6 * sqrt(.0045 / (.0045 + dp))
+               + exp(-d / .08) * .3; // large anneau lumineux collé à l'ombre (lumière des orbites rasantes)
     ring *= edge * smoothstep(.45, .75, uLens); // pas de sphère de photons sans lentille
     // Dans l'ombre, seul ce que le rayon a croisé à l'aller (le disque devant) ; ailleurs, tout.
     vec3 light = mix(emissionIn, emission, edge) + uHot * ring * 1.7 * uBright;
